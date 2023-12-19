@@ -133,75 +133,13 @@
 <li>起始信号.</li>
 <li>第一个数据段为7位的设备地址 + 1位 <em>读(1)</em> 标识码组成.此时主机释放SDA, 将SDA控制权转移给从机.</li>
 <li>从机发送数据.</li>
-<li>主机在应答后回到 <em>第2步</em> 继续读取下一位的数据(此时地址指针已经自增), 或不应答, 发送终止信号终止本次通讯.</li>
+<li>主机在应答后回到 <em>第2步</em> 继续读取下一位的数据(此时地址指针已经自增), 或不应答, 发送终止信号终止本次通讯.<br><img src="/.com//3.jpg" alt="指定地址读"></li>
 </ol>
 
       
     </div>
     <footer class="article-footer">
       <a data-url="http://example.com/2023/12/20/I2C/" data-id="clqcjbe9b0000pgve7qjv0dic" data-title="I2C" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-I2C-communication-protocol" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/12/19/I2C-communication-protocol/" class="article-date">
-  <time class="dt-published" datetime="2023-12-19T12:40:15.000Z" itemprop="datePublished">2023-12-19</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/12/19/I2C-communication-protocol/">I2C communication protocol</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <h2 id="i2c通讯协议"><a href="#i2c通讯协议" class="headerlink" title="i2c通讯协议"></a>i2c通讯协议</h2><h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了PCB布线, 降低了系统成本, 提高了系统可靠性, 因此在各个领域得到了广泛应用. </p>
-<p>I2C总线是一种多主机总线, 连接在 I2C总线上的器件分为主机和从机. 主机有权发起和结束一次通信, 从机只能被动呼叫, 并且SCL的控制权永远在主机手中, 从机根据主机的时钟进行应答. 每个连接到I2C总线上的器件都有一个唯一的地址(7bit), 且每个器件都可以作为主机也可以作为从机(但同一时刻只能有一个主机).多主机模式在本文中不进行讨论.</p>
-<p>相对于USART协议, i2c通过时钟和应答机制保证了传输的可靠性. 如果在传输过程中主机进入中断, 中断期间SCL电平不会发生变化, 通讯保持在原来的过程上, 退出中断后, 数据不会丢失(错过). 而应答机制避免了接收方没有接收到数据, 通过应答机制,发送方发现接收方没有接收到数据时可以选择处理方式(从新发送等), 防止重要数据丢失. </p>
-<p>i2c总线上器件的增加和删除不影响其他器件正常工作; I2C总线在通信时总线上发送数据的器件为发送器, 接收数据的器件为接收器.</p>
-<h3 id="电路连接"><a href="#电路连接" class="headerlink" title="电路连接"></a>电路连接</h3><p>i2c要求设备均串联在总线上, 即所有SCL均并联在一起, 所有SDA均并联在一起. 为了避免总线上出现短路, 所有端口均不允许输出高电平, 所有接口都要配置成开漏输出模式(逻辑’1’浮空, 逻辑’0’输出VDD), 然后在总线上并联1个弱上拉电阻负责输出高电平. 总线构成线与结构, 当所有端口悬空时,总线上为高电平, 否则为低电平, 因此低电平表示有设备有动作, 因此一低电平被用于应答位的有效电平. </p>
-<h3 id="标志信号"><a href="#标志信号" class="headerlink" title="标志信号"></a>标志信号</h3><ol>
-<li>起始信号(重新起始信号): 初始SDA和SCL均为高电平, SDA率先下降为低电平;<br><img src="/.com//1.png" alt="起始信号"></li>
-<li>终止信号: 初始SDA和SCL均为低电平, SCL率先升为高电平;<br><img src="/.com//2.png" alt="终止信号"></li>
-<li>应答信号: 在发送方发送完一个字节的信息后, 接收方拉低电平知道下一个时间周期结束.<br><img src="/.com//3.png" alt="应答信号"></li>
-</ol>
-<ul>
-<li>不难看出: i2c通过SCL对数据进行了隔离, 对于除了起始和终止信号, 只能在SCL为低电平时发生翻转, 高电平时必须保持不变. 而起始和终止信号在SCL为高电平时CDA会产生翻转.</li>
-</ul>
-<h3 id="读写时序"><a href="#读写时序" class="headerlink" title="读写时序"></a>读写时序</h3><p>i2c协议要求每段指令由起始信号开始, 在产生终止信号后结束. 一个指令可以由多个数据段组成, 每个数据段为8位, 数据高位先行, 数据段之后一个时钟周期为接收方的应答信号, 之后进入新一个数据段.</p>
-<ul>
-<li>指定地址写</li>
-</ul>
-<ol>
-<li>起始信号</li>
-<li>第一个数据段为7位的设备地址 + 1位 <em>读(1) &#x2F; 写(0)</em> 标识码组成.</li>
-<li>第二个数据段是待读取的数据在从机中的地址(8位).</li>
-<li>第三个数据段是待写入的数据.</li>
-<li>之后主机可以选择回到 <em>第 2 步</em> 继续写入, 也可以发出终止信号终止本次通讯.(下图为直接终止)<br><img src="/.com//1.jpg" alt="指定地址写"></li>
-</ol>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://example.com/2023/12/19/I2C-communication-protocol/" data-id="clqciiziu0000wkve1iv12mym" data-title="I2C communication protocol" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -334,10 +272,6 @@
         
           <li>
             <a href="/2023/12/20/I2C/">I2C</a>
-          </li>
-        
-          <li>
-            <a href="/2023/12/19/I2C-communication-protocol/">I2C communication protocol</a>
           </li>
         
           <li>
