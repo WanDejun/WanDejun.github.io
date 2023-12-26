@@ -6,12 +6,12 @@
   
   <title>I2C | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:i2c通讯协议简介I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了P">
+  <meta name="description" content="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:I2C通讯协议简介I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了P">
 <meta property="og:type" content="article">
 <meta property="og:title" content="I2C">
 <meta property="og:url" content="http://example.com/2023/12/20/I2C/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:i2c通讯协议简介I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了P">
+<meta property="og:description" content="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:I2C通讯协议简介I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了P">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="http://example.com/2023/12/20/I2C/1.png">
 <meta property="og:image" content="http://example.com/2023/12/20/I2C/3.png">
@@ -20,7 +20,7 @@
 <meta property="og:image" content="http://example.com/2023/12/20/I2C/2.jpg">
 <meta property="og:image" content="http://example.com/2023/12/20/I2C/i2c%E7%8A%B6%E6%80%81%E8%BD%AC%E7%A7%BB%E5%9B%BE.png">
 <meta property="article:published_time" content="2023-12-19T16:02:11.000Z">
-<meta property="article:modified_time" content="2023-12-22T09:18:24.994Z">
+<meta property="article:modified_time" content="2023-12-25T12:40:55.899Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://example.com/2023/12/20/I2C/1.png">
@@ -101,7 +101,7 @@
     <div class="e-content article-entry" itemprop="articleBody">
       
         <hr>
-<h2 id="title-I2C-communication-protocoldate-2023-12-19-20-40-15tags"><a href="#title-I2C-communication-protocoldate-2023-12-19-20-40-15tags" class="headerlink" title="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:"></a>title: I2C communication protocol<br>date: 2023-12-19 20:40:15<br>tags:</h2><h2 id="i2c通讯协议"><a href="#i2c通讯协议" class="headerlink" title="i2c通讯协议"></a>i2c通讯协议</h2><h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了PCB布线, 降低了系统成本, 提高了系统可靠性, 因此在各个领域得到了广泛应用. </p>
+<h2 id="title-I2C-communication-protocoldate-2023-12-19-20-40-15tags"><a href="#title-I2C-communication-protocoldate-2023-12-19-20-40-15tags" class="headerlink" title="title: I2C communication protocoldate: 2023-12-19 20:40:15tags:"></a>title: I2C communication protocol<br>date: 2023-12-19 20:40:15<br>tags:</h2><h2 id="I2C通讯协议"><a href="#I2C通讯协议" class="headerlink" title="I2C通讯协议"></a>I2C通讯协议</h2><h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>I2C总线是Philips公司在八十年代初推出的一种串行、半双工的总线, 主要用于近距离、低速的芯片之间的通信; I2C总线有两根双向的信号线, 一根数据线SDA用于收发数据, 一根时钟线SCL用于通信双方时钟的同步; I2C总线硬件结构简单, 简化了PCB布线, 降低了系统成本, 提高了系统可靠性, 因此在各个领域得到了广泛应用. </p>
 <p>I2C总线是一种多主机总线, 连接在 I2C总线上的器件分为主机和从机. 主机有权发起和结束一次通信, 从机只能被动呼叫, 并且SCL的控制权永远在主机手中, 从机根据主机的时钟进行应答. 每个连接到I2C总线上的器件都有一个唯一的地址(7bit), 且每个器件都可以作为主机也可以作为从机(但同一时刻只能有一个主机).多主机模式在本文中不进行讨论.</p>
 <p>相对于USART协议, i2c通过时钟和应答机制保证了传输的可靠性. 如果在传输过程中主机进入中断, 中断期间SCL电平不会发生变化, 通讯保持在原来的过程上, 退出中断后, 数据不会丢失(错过). 而应答机制避免了接收方没有接收到数据, 通过应答机制,发送方发现接收方没有接收到数据时可以选择处理方式(从新发送等), 防止重要数据丢失. </p>
 <p>i2c总线上器件的增加和删除不影响其他器件正常工作; I2C总线在通信时总线上发送数据的器件为发送器, 接收数据的器件为接收器.</p>
@@ -186,6 +186,15 @@
     
 <nav id="article-nav">
   
+    <a href="/2023/12/25/SPI/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          SPI
+        
+      </div>
+    </a>
+  
   
     <a href="/2023/12/19/My-Mew-Post/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
@@ -225,6 +234,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2023/12/25/SPI/">SPI</a>
+          </li>
         
           <li>
             <a href="/2023/12/20/I2C/">I2C</a>
