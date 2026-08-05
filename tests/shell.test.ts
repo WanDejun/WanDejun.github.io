@@ -7,13 +7,38 @@ import { terminalCellWidth } from '../src/shell/columnLayout';
 import { Shell } from '../src/shell/Shell';
 
 const controller = () => new AbortController().signal;
+const postSource = `# Post
+
+### Deep heading
+
+1. Parent line
+   continuation line
+
+   Second paragraph.
+
+   - Nested child
+2. Last item
+
+$$
+E = mc^2
+$$
+
+\`\`\`mermaid
+flowchart LR
+  A --> B
+\`\`\`
+
+![Photo](./photo.png)
+
+Emoji :rocket: and 😺; code \`:rocket:\`.
+`;
 let shell: Shell;
 
 beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
-    { path: '/post/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
+    { path: '/post/post.md', content: postSource, size: new TextEncoder().encode(postSource).byteLength, mime: 'text/markdown', url: '/post.md' },
     { path: '/post/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
     { path: '/post/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
     { path: '/project/page.html', content: '<h1>Project</h1>', size: 16, mime: 'text/html' },
@@ -166,6 +191,16 @@ describe('Shell', () => {
       .join('')
       .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '');
     expect(renderedText).toContain('Emoji 🚀 and 😺; code  :rocket: .');
+    expect(renderedText).toContain('  ▹ Deep heading');
+    expect(renderedText).toContain([
+      '1. Parent line',
+      '   continuation line',
+      '',
+      '   Second paragraph.',
+      '',
+      '   • Nested child',
+      '2. Last item',
+    ].join('\n'));
   });
 
   it('opens only slide index HTML files as standalone documents', async () => {

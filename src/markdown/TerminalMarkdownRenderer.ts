@@ -1,9 +1,12 @@
 import hljs from 'highlight.js/lib/core';
 import bash from 'highlight.js/lib/languages/bash';
 import css from 'highlight.js/lib/languages/css';
+import go from 'highlight.js/lib/languages/go';
 import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
 import markdown from 'highlight.js/lib/languages/markdown';
+import python from 'highlight.js/lib/languages/python';
+import rust from 'highlight.js/lib/languages/rust';
 import typescript from 'highlight.js/lib/languages/typescript';
 import { Marked, type Token, type TokenizerExtension, type Tokens } from 'marked';
 import { emojify } from 'node-emoji';
@@ -32,11 +35,17 @@ const formulaExtension: TokenizerExtension = {
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('shell', bash);
 hljs.registerLanguage('css', css);
+hljs.registerLanguage('go', go);
+hljs.registerLanguage('golang', go);
 hljs.registerLanguage('javascript', javascript);
 hljs.registerLanguage('js', javascript);
 hljs.registerLanguage('json', json);
 hljs.registerLanguage('markdown', markdown);
 hljs.registerLanguage('md', markdown);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('rust', rust);
+hljs.registerLanguage('rs', rust);
 hljs.registerLanguage('typescript', typescript);
 hljs.registerLanguage('ts', typescript);
 
@@ -54,9 +63,11 @@ export class TerminalMarkdownRenderer {
           break;
         case 'heading': {
           const heading = token as Tokens.Heading;
-          const marker = heading.depth === 1 ? '█' : '▸';
+          const markers = ['█', '▸', '▹', '•', '·', '·'];
+          const marker = markers[heading.depth - 1];
+          const indent = '  '.repeat(Math.max(0, heading.depth - 2));
           const text = this.inlineText(heading.tokens as InlineToken[]);
-          push(`${paint(marker, context.theme.markdown.heading, ansi.bold)} ${paint(text, context.theme.markdown.heading, ansi.bold)}\n\n`);
+          push(`${indent}${paint(marker, context.theme.markdown.heading, ansi.bold)} ${paint(text, context.theme.markdown.heading, ansi.bold)}\n\n`);
           break;
         }
         case 'paragraph': {
@@ -73,11 +84,7 @@ export class TerminalMarkdownRenderer {
         }
         case 'list': {
           const list = token as Tokens.List;
-          const lines = list.items.map((item, index) => {
-            const marker = list.ordered ? `${Number(list.start) + index}.` : '•';
-            const text = sanitizeTerminalText(this.tokensToPlain(item.tokens)).trim().replace(/\n+/g, ' ');
-            return `${paint(marker, context.theme.markdown.heading)} ${text}`;
-          });
+          const lines = this.renderList(list, context);
           push(`${lines.join('\n')}\n\n`);
           break;
         }
@@ -185,6 +192,48 @@ export class TerminalMarkdownRenderer {
       const text = token.text ?? token.raw ?? '';
       return token.type === 'codespan' ? text : emojify(text);
     }).join(''));
+  }
+
+  private renderList(list: Tokens.List, context: CommandContext, indent = ''): string[] {
+    const lines: string[] = [];
+    const start = typeof list.start === 'number' ? list.start : Number(list.start) || 1;
+
+    list.items.forEach((item, index) => {
+      const marker = list.ordered ? `${start + index}.` : '•';
+      const continuationIndent = `${indent}${' '.repeat(marker.length + 1)}`;
+      let hasText = false;
+
+      for (const token of item.tokens) {
+        if (token.type === 'space') {
+          if (lines.length > 0 && lines.at(-1) !== '') lines.push('');
+          continue;
+        }
+        if (token.type === 'list') {
+          lines.push(...this.renderList(token as Tokens.List, context, continuationIndent));
+          continue;
+        }
+
+        const text = this.listTokenText(token).trim();
+        if (!text) continue;
+        for (const textLine of text.split('\n')) {
+          const prefix = hasText
+            ? continuationIndent
+            : `${indent}${paint(marker, context.theme.markdown.heading)} `;
+          lines.push(`${prefix}${textLine}`.trimEnd());
+          hasText = true;
+        }
+      }
+    });
+
+    return lines;
+  }
+
+  private listTokenText(token: Token): string {
+    if ((token.type === 'text' || token.type === 'paragraph')
+      && 'tokens' in token && Array.isArray(token.tokens)) {
+      return this.inlineText(token.tokens as InlineToken[]);
+    }
+    return sanitizeTerminalText(this.tokensToPlain([token]));
   }
 
   private tokensToPlain(tokens: Token[]): string {

@@ -215,8 +215,12 @@ test('renders a MathJax formula through the iTerm2 image layer', async ({ page }
   await page.goto('/');
   await waitForTerminalReady(page);
   await runCommand(page, 'render /post/hello-terminal.md');
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.', { timeout: 30_000 });
-  await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('formula unavailable');
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
+  // The longer example scrolls formulas out of view; ImageAddon redraws them when revisiting scrollback.
+  await page.locator('.xterm-helper-textarea').press('Shift+PageUp');
+  await expect(terminal).toContainText('This loss function is also rendered as an internal image chunk.');
+  await expect(terminal).not.toContainText('formula unavailable');
   await expectOpaqueImageLayer(page);
 });
 
@@ -227,6 +231,8 @@ test('renders a Mermaid diagram through the iTerm2 image layer', async ({ page }
   await page.goto('/');
   await waitForTerminalReady(page);
   await runCommand(page, 'render /post/hello-terminal.md');
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This pie chart is rendered by Mermaid.', { timeout: 30_000 });
+  await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
   await expectOpaqueImageLayer(page);
