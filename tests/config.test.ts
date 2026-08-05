@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig, loadTheme } from '../src/config';
+import { loadConfig, loadTheme, themeNames } from '../src/config';
 
 const themes = [
   ['tokyonight-night', 'dark'],
@@ -24,6 +24,10 @@ function contrast(first: string, second: string): number {
 }
 
 describe('configuration', () => {
+  it('discovers every bundled theme for runtime selection', () => {
+    expect(themeNames).toEqual(themes.map(([name]) => name).sort());
+  });
+
   it('loads editable prompt and sizing settings', () => {
     const config = loadConfig(`
       [site]

@@ -208,8 +208,12 @@ export const nlCommand: Command = {
 
 export const whichCommand: Command = {
   name: 'which', description: 'Locate commands', usage: 'which COMMAND ...',
+  completion: 'commands',
   execute(args, _stdin, context) {
-    const found = args.filter((name) => context.getCommand(name)).map((name) => `/bin/${name}`);
+    const found = args
+      .map((name) => context.getCommand(name))
+      .filter((command) => command !== undefined)
+      .map((command) => `/bin/${command.name}`);
     const missing = args.filter((name) => !context.getCommand(name));
     return { stdout: found.length ? `${found.join('\n')}\n` : '', exitCode: missing.length ? 1 : 0 };
   },

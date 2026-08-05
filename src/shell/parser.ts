@@ -7,6 +7,7 @@ export interface CompletionTarget {
   prefix: string;
   suffix: string;
   isCommand: boolean;
+  commandName?: string;
 }
 
 export function quoteShellWord(value: string): string {
@@ -22,6 +23,7 @@ export function findCompletionTarget(input: string, cursor = input.length): Comp
   let escaped = false;
   let wordStarted = false;
   let commandPosition = true;
+  let commandName: string | undefined;
   let start = 0;
   let fragment = '';
 
@@ -41,8 +43,14 @@ export function findCompletionTarget(input: string, cursor = input.length): Comp
       quote = quote === 'double' ? null : 'double';
       wordStarted = true;
     } else if (!quote && (character === '|' || /\s/.test(character))) {
-      if (wordStarted) commandPosition = false;
-      if (character === '|') commandPosition = true;
+      if (wordStarted) {
+        if (commandPosition) commandName = fragment;
+        commandPosition = false;
+      }
+      if (character === '|') {
+        commandPosition = true;
+        commandName = undefined;
+      }
       wordStarted = false;
       fragment = '';
       start = index + 1;
@@ -75,6 +83,7 @@ export function findCompletionTarget(input: string, cursor = input.length): Comp
     prefix: input.slice(0, start),
     suffix: input.slice(end),
     isCommand: commandPosition,
+    commandName: commandPosition ? undefined : commandName,
   };
 }
 

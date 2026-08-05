@@ -8,6 +8,7 @@ import {
   trCommand, uniqCommand, whichCommand,
 } from './commands/textCommands';
 import { renderCommand } from './commands/renderCommand';
+import { themeCommand } from './commands/themeCommand';
 import type { Command } from './types';
 
 const helpCommand: Command = {
@@ -26,7 +27,7 @@ export function createRegistry(): CommandRegistry {
     basenameCommand, catCommand, cdCommand, clearCommand, cutCommand, dirnameCommand,
     echoCommand, exitCommand, findCommand, grepCommand, headCommand,
     helpCommand, lsCommand, nlCommand, printfCommand, pwdCommand, sedCommand, sortCommand,
-    renderCommand, tailCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
+    renderCommand, tailCommand, themeCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
   ].forEach((command) => registry.register(command));
   return registry;
 }

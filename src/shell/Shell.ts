@@ -15,8 +15,15 @@ export class Shell {
   constructor(
     readonly fs: VirtualFileSystem,
     readonly registry: CommandRegistry,
-    private readonly theme: AppTheme,
+    private theme: AppTheme,
+    private themeName = '',
+    private readonly availableThemes: readonly string[] = [],
   ) {}
+
+  setTheme(name: string, nextTheme: AppTheme): void {
+    this.themeName = name;
+    this.theme = nextTheme;
+  }
 
   reset(): void {
     this.cwd = '/';
@@ -56,9 +63,11 @@ export class Shell {
         isStandalone: pipeline.length === 1,
         signal,
         theme: this.theme,
+        themeName: this.themeName,
         setCwd: (path) => { this.cwd = path; },
         getCommand: (name) => this.registry.get(name),
         commandNames: () => this.registry.names(),
+        themeNames: () => [...this.availableThemes],
       };
       try {
         final = await command.execute(args, stdin, context);
@@ -79,21 +88,44 @@ export class Shell {
 
   complete(input: string, cursor = input.length): CompletionResult {
     const target = findCompletionTarget(input, cursor);
-    const candidates = target.isCommand
-      ? this.registry.names()
+    let candidates: CompletionSuggestion[] = [];
+    if (target.isCommand) {
+      candidates = this.registry.names()
         .filter((name) => name.startsWith(target.fragment))
-        .map((value): CompletionSuggestion => ({ value, kind: 'command' }))
-      : this.pathCompletions(target.fragment);
+        .map((value): CompletionSuggestion => ({ value, kind: 'command' }));
+    } else {
+      const command = target.commandName ? this.registry.get(target.commandName) : undefined;
+      switch (command?.completion) {
+        case 'files':
+          candidates = this.pathCompletions(target.fragment);
+          break;
+        case 'directories':
+          candidates = this.pathCompletions(target.fragment, 'directory');
+          break;
+        case 'commands':
+          candidates = this.commandCompletions(target.fragment);
+          break;
+        case 'themes':
+          candidates = this.availableThemes
+            .filter((name) => name.startsWith(target.fragment))
+            .map((value): CompletionSuggestion => ({ value, kind: 'theme' }));
+          break;
+        default:
+          // Commands without a completion policy intentionally produce no candidates.
+          break;
+      }
+    }
     return { prefix: target.prefix, suffix: target.suffix, suggestions: candidates };
   }
 
-  private pathCompletions(fragment: string): CompletionSuggestion[] {
+  private pathCompletions(fragment: string, type?: 'directory'): CompletionSuggestion[] {
     const slash = fragment.lastIndexOf('/');
     const directoryPart = slash === -1 ? '.' : fragment.slice(0, slash) || '/';
     const namePart = slash === -1 ? fragment : fragment.slice(slash + 1);
     try {
       return this.fs.list(directoryPart, this.cwd)
         .filter((node) => node.name.startsWith(namePart))
+        .filter((node) => !type || node.type === type)
         .map((node): CompletionSuggestion => {
           const prefix = slash === -1 ? '' : fragment.slice(0, slash + 1);
           return {
@@ -104,5 +136,12 @@ export class Shell {
     } catch {
       return [];
     }
+  }
+
+  private commandCompletions(fragment: string): CompletionSuggestion[] {
+    const namePart = fragment.startsWith('/bin/') ? fragment.slice('/bin/'.length) : fragment;
+    return this.registry.names()
+      .filter((name) => name.startsWith(namePart))
+      .map((name): CompletionSuggestion => ({ value: `/bin/${name}`, kind: 'executable' }));
   }
 }

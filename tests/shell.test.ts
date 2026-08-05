@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { theme } from '../src/config';
+import { theme, themeNames } from '../src/config';
 import { VirtualFileSystem } from '../src/filesystem/VirtualFileSystem';
 import { createRegistry } from '../src/shell/createRegistry';
 import { ansi } from '../src/shell/ansi';
@@ -17,7 +17,7 @@ beforeEach(() => {
     { path: '/blogs/notes/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
     { path: '/blogs/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
   ], registry.names());
-  shell = new Shell(fs, registry, theme);
+  shell = new Shell(fs, registry, theme, 'tokyonight-night', themeNames);
 });
 
 describe('Shell', () => {
@@ -69,6 +69,41 @@ describe('Shell', () => {
       suffix: '',
       suggestions: [{ value: '/blogs/my notes/draft post.md', kind: 'file' }],
     });
+
+    expect(shell.complete('ls ')).toEqual({ prefix: 'ls ', suffix: '', suggestions: [] });
+    expect(shell.complete('which c')).toEqual({
+      prefix: 'which ',
+      suffix: '',
+      suggestions: [
+        { value: '/bin/cat', kind: 'executable' },
+        { value: '/bin/cd', kind: 'executable' },
+        { value: '/bin/clear', kind: 'executable' },
+        { value: '/bin/cut', kind: 'executable' },
+      ],
+    });
+    expect(shell.complete('cat post.md | which c').suggestions).toEqual([
+      { value: '/bin/cat', kind: 'executable' },
+      { value: '/bin/cd', kind: 'executable' },
+      { value: '/bin/clear', kind: 'executable' },
+      { value: '/bin/cut', kind: 'executable' },
+    ]);
+    expect(shell.complete('theme gruvbox-').suggestions).toEqual([
+      { value: 'gruvbox-dark', kind: 'theme' },
+      { value: 'gruvbox-light', kind: 'theme' },
+    ]);
+  });
+
+  it('lists themes, emits a theme change, and accepts completed /bin paths', async () => {
+    const listed = await shell.execute('theme', controller());
+    expect(listed.chunks).toEqual([{ type: 'text', value: expect.stringContaining('* tokyonight-night\n') }]);
+
+    const changed = await shell.execute('theme gruvbox-light', controller());
+    expect(changed.chunks).toEqual([{ type: 'theme', name: 'gruvbox-light' }]);
+    expect((await shell.execute('theme missing', controller())).exitCode).toBe(1);
+    expect((await shell.execute('theme gruvbox-light | cat', controller())).exitCode).toBe(2);
+    expect((await shell.execute('which /bin/cat', controller())).chunks).toEqual([
+      { type: 'text', value: '/bin/cat\n' },
+    ]);
   });
 
   it('colors directories, executables, and regular files without polluting pipes', async () => {

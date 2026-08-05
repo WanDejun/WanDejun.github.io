@@ -62,6 +62,7 @@ export type OutputChunk =
   | { type: 'image'; source: string; alt: string; name: string }
   | { type: 'formula'; source: string; display: boolean }
   | { type: 'diagram'; source: string }
+  | { type: 'theme'; name: string }
   | { type: 'clear' }
   | { type: 'reset' };
 

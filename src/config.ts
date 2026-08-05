@@ -10,6 +10,10 @@ const themeFiles = import.meta.glob('./themes/*.toml', {
   query: '?raw',
 }) as Record<string, string>;
 
+export const themeNames = Object.keys(themeFiles)
+  .map((path) => path.slice(path.lastIndexOf('/') + 1, -'.toml'.length))
+  .sort();
+
 function table(value: unknown, path: string): Table {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`Expected TOML table at ${path}`);

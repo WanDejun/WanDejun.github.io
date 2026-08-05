@@ -98,7 +98,7 @@ test('selects path completions with Tab and arrow keys before executing', async 
 
   await input.press('Tab');
   await expect(terminal).toContainText('cat example-coat.png');
-  await input.press('ArrowRight');
+  await input.press('ArrowDown');
   await expect(terminal).toContainText('cat hello-terminal.md');
 
   // The first Enter accepts the highlighted candidate; the second executes it.
@@ -106,6 +106,27 @@ test('selects path completions with Tab and arrow keys before executing', async 
   await expect(terminal).toContainText('cat hello-terminal.md');
   await input.press('Enter');
   await expect(terminal).toContainText('This flowchart is rendered by Mermaid.');
+});
+
+test('switches themes without resetting the shell session', async ({ page }) => {
+  await page.goto('/');
+  await waitForTerminalReady(page);
+  await runCommand(page, 'cd /blogs');
+  const terminal = page.locator('.xterm-accessibility-tree');
+  const input = page.locator('.xterm-helper-textarea');
+  await input.focus();
+  await input.pressSequentially('the');
+  await input.press('Tab');
+  await input.pressSequentially('gruvbox-light');
+  await expect(terminal).toContainText('theme gruvbox-light');
+  await input.press('Enter');
+
+  await expect.poll(() => page.locator('.page').evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgb(242, 229, 188)');
+
+  await runCommand(page, 'pwd');
+  await expect(terminal).toContainText('/blogs');
 });
 
 test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {

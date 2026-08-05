@@ -27,10 +27,12 @@ describe('parseCommandLine', () => {
       prefix: 'cat ',
       suffix: ' | wc',
       isCommand: false,
+      commandName: 'cat',
     });
     expect(findCompletionTarget("cat '/blogs/my notes/'")).toMatchObject({
       fragment: '/blogs/my notes/',
       prefix: 'cat ',
+      commandName: 'cat',
     });
 
     const filename = "draft * 'notes'.md";

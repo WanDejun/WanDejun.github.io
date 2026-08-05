@@ -31,6 +31,7 @@ npm run build
 
 Available palettes are `tokyonight-night`, `tokyonight-day`, `gruvbox-dark`,
 `gruvbox-light`, `molokai-dark`, and `molokai-light`.
+Run `theme` to list them or `theme NAME` to switch palettes without reloading.
 
 Use `cat` to read Markdown source and `render FILE.md` to render terminal-formatted
 Markdown with MathJax formula blocks, Mermaid fenced code blocks, and local or

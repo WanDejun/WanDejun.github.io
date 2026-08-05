@@ -9,21 +9,26 @@ export interface CommandContext {
   isStandalone: boolean;
   signal: AbortSignal;
   theme: AppTheme;
+  themeName: string;
   setCwd(path: string): void;
   getCommand(name: string): Command | undefined;
   commandNames(): string[];
+  themeNames(): string[];
 }
+
+export type CommandCompletion = 'files' | 'directories' | 'commands' | 'themes';
 
 export interface Command {
   name: string;
   description: string;
   usage: string;
+  completion?: CommandCompletion;
   execute(args: string[], stdin: string, context: CommandContext): Promise<CommandOutput> | CommandOutput;
 }
 
 export type CompletionSuggestion = {
   value: string;
-  kind: 'command' | 'directory' | 'executable' | 'file';
+  kind: 'command' | 'directory' | 'executable' | 'file' | 'theme';
 };
 
 export type CompletionResult = {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { layoutCompletions, moveCompletionIndex } from '../src/components/completionPager';
+import {
+  applyCompletionSuggestion, layoutCompletions, moveCompletionColumn, moveCompletionIndex,
+} from '../src/components/completionPager';
 import { fitCell, terminalCellWidth } from '../src/shell/columnLayout';
 import type { CompletionSuggestion } from '../src/shell/types';
 
@@ -12,7 +14,10 @@ describe('completion pager', () => {
   it('lays candidates out within the available terminal area', () => {
     const layout = layoutCompletions(suggestions, null, 16, 3);
     expect(layout.columnCount).toBe(2);
-    expect(layout.rows.flat().map(({ suggestion }) => suggestion.value)).toEqual(['alpha', 'beta', 'gamma', 'omega']);
+    expect(layout.rows.map((row) => row.map(({ suggestion }) => suggestion.value))).toEqual([
+      ['alpha', 'gamma'],
+      ['beta', 'omega'],
+    ]);
     expect(layout.pageCount).toBe(1);
   });
 
@@ -31,6 +36,44 @@ describe('completion pager', () => {
     expect(moveCompletionIndex(null, 4, 1)).toBe(0);
     expect(moveCompletionIndex(3, 4, 1)).toBe(0);
     expect(moveCompletionIndex(0, 4, -1)).toBe(3);
+  });
+
+  it('continues from the bottom of one column to the next column', () => {
+    const five = [...suggestions, { value: 'sigma', kind: 'file' as const }];
+    const layout = layoutCompletions(five, 2, 16, 3);
+    expect(layout.rows.map((row) => row.map(({ index }) => index))).toEqual([
+      [0, 3],
+      [1, 4],
+      [2],
+    ]);
+    expect(moveCompletionIndex(2, five.length, 1)).toBe(3);
+  });
+
+  it('moves horizontally within a visual row and skips missing cells', () => {
+    const five = [...suggestions, { value: 'sigma', kind: 'file' as const }];
+    const layout = layoutCompletions(five, 1, 16, 3);
+    expect(moveCompletionColumn(1, layout, 1)).toBe(4);
+    expect(moveCompletionColumn(4, layout, 1)).toBe(1);
+    expect(moveCompletionColumn(2, layout, 1)).toBe(2);
+  });
+
+  it('adds a separator after accepted non-directory candidates', () => {
+    expect(applyCompletionSuggestion('', '', { value: 'theme', kind: 'command' })).toEqual({
+      line: 'theme ',
+      cursor: 6,
+    });
+    expect(applyCompletionSuggestion('cat ', '', { value: 'draft post.md', kind: 'file' })).toEqual({
+      line: "cat 'draft post.md' ",
+      cursor: 20,
+    });
+    expect(applyCompletionSuggestion('cd ', '', { value: 'blogs/', kind: 'directory' })).toEqual({
+      line: 'cd blogs/',
+      cursor: 9,
+    });
+    expect(applyCompletionSuggestion('cat ', ' | wc', { value: 'post.md', kind: 'file' })).toEqual({
+      line: 'cat post.md | wc',
+      cursor: 11,
+    });
   });
 
   it('pads and truncates labels to a stable width', () => {

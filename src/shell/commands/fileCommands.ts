@@ -40,6 +40,7 @@ function columnarNodeNames(entries: VirtualNode[], context: CommandContext): { p
 
 export const catCommand: Command = {
   name: 'cat', description: 'Concatenate files', usage: 'cat [-n] [FILE ...]',
+  completion: 'files',
   execute(args, stdin, context) {
     const numbered = args[0] === '-n';
     const paths = numbered ? args.slice(1) : args;
@@ -176,6 +177,7 @@ export const findCommand: Command = {
 function headTail(command: 'head' | 'tail'): Command {
   return {
     name: command, description: `${command === 'head' ? 'First' : 'Last'} lines of files`, usage: `${command} [-n COUNT] [FILE ...]`,
+    completion: 'files',
     execute(args, stdin, context) {
       let count = 10; const paths: string[] = [];
       for (let index = 0; index < args.length; index += 1) {
@@ -258,6 +260,7 @@ export const wcCommand: Command = {
 
 export const cdCommand: Command = {
   name: 'cd', description: 'Change working directory', usage: 'cd [DIRECTORY]',
+  completion: 'directories',
   execute(args, _stdin, context) {
     if (args.length > 1) return { stdout: '', stderr: error('cd', 'too many arguments'), exitCode: 1 };
     try {

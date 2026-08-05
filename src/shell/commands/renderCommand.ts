@@ -8,6 +8,7 @@ export const renderCommand: Command = {
   name: 'render',
   description: 'Render a Markdown file in the terminal',
   usage: 'render FILE.md',
+  completion: 'files',
   execute(args, _stdin, context) {
     if (!context.isStandalone) {
       return { stdout: '', stderr: error('render', 'cannot be used in a pipeline'), exitCode: 2 };

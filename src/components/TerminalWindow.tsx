@@ -1,20 +1,21 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { ImageAddon } from '@xterm/addon-image';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { config, theme } from '../config';
-import { layoutCompletions, moveCompletionIndex } from './completionPager';
+import { config, loadTheme, theme as initialTheme, themeNames } from '../config';
+import {
+  applyCompletionSuggestion, layoutCompletions, moveCompletionColumn, moveCompletionIndex,
+} from './completionPager';
 import { buildManifest } from '../filesystem/manifest';
 import { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText, terminalLines } from '../shell/ansi';
 import { formatColumnRow, terminalCellWidth } from '../shell/columnLayout';
 import { createRegistry } from '../shell/createRegistry';
-import { quoteShellWord } from '../shell/parser';
 import { Shell } from '../shell/Shell';
 import type { CompletionSuggestion } from '../shell/types';
-import type { OutputChunk } from '../types';
+import type { AppTheme, OutputChunk } from '../types';
 
 interface CompletionMenu {
   suggestions: CompletionSuggestion[];
@@ -79,6 +80,7 @@ async function writeImage(
   terminal: Terminal,
   chunk: Extract<OutputChunk, { type: 'image' }>,
   signal: AbortSignal,
+  palette: AppTheme,
 ): Promise<void> {
   const timeout = new AbortController();
   const timer = window.setTimeout(() => timeout.abort(), config.images.timeoutMs);
@@ -99,7 +101,7 @@ async function writeImage(
     if (signal.aborted) throw exception;
     const reason = exception instanceof Error ? exception.message : String(exception);
     const fallback = `[image unavailable: ${chunk.alt}; ${reason}] ${chunk.source}\n`;
-    await xtermWrite(terminal, terminalLines(paint(fallback, theme.markdown.error)));
+    await xtermWrite(terminal, terminalLines(paint(fallback, palette.markdown.error)));
   } finally {
     window.clearTimeout(timer);
     signal.removeEventListener('abort', abort);
@@ -135,6 +137,7 @@ async function writeGeneratedImage(
   terminal: Terminal,
   signal: AbortSignal,
   kind: 'formula' | 'diagram',
+  palette: AppTheme,
   createSvg: () => Promise<string>,
 ): Promise<void> {
   try {
@@ -147,7 +150,7 @@ async function writeGeneratedImage(
   } catch (exception) {
     if (signal.aborted) throw exception;
     const reason = sanitizeTerminalText(exception instanceof Error ? exception.message : String(exception));
-    await xtermWrite(terminal, terminalLines(paint(`[${kind} unavailable: ${reason}]\n`, theme.markdown.error)));
+    await xtermWrite(terminal, terminalLines(paint(`[${kind} unavailable: ${reason}]\n`, palette.markdown.error)));
   }
 }
 
@@ -155,11 +158,12 @@ async function writeFormula(
   terminal: Terminal,
   chunk: Extract<OutputChunk, { type: 'formula' }>,
   signal: AbortSignal,
+  palette: AppTheme,
 ): Promise<void> {
-  return writeGeneratedImage(terminal, signal, 'formula', async () => {
+  return writeGeneratedImage(terminal, signal, 'formula', palette, async () => {
     // MathJax is a separate bundle and is loaded only when rendered Markdown contains TeX.
     const { formulaToSvg } = await import('../markdown/renderFormula');
-    return formulaToSvg(chunk.source, chunk.display, theme.terminal.foreground ?? '#c0caf5');
+    return formulaToSvg(chunk.source, chunk.display, palette.terminal.foreground ?? '#c0caf5');
   });
 }
 
@@ -167,17 +171,18 @@ async function writeDiagram(
   terminal: Terminal,
   chunk: Extract<OutputChunk, { type: 'diagram' }>,
   signal: AbortSignal,
+  palette: AppTheme,
 ): Promise<void> {
-  return writeGeneratedImage(terminal, signal, 'diagram', async () => {
+  return writeGeneratedImage(terminal, signal, 'diagram', palette, async () => {
     // Mermaid is intentionally lazy because its parsers and layout engines are sizeable.
     const { diagramToSvg } = await import('../markdown/renderDiagram');
     return diagramToSvg(chunk.source, {
-      background: theme.page.panel,
-      foreground: theme.terminal.foreground ?? '#c0caf5',
-      primary: theme.markdown.heading,
-      secondary: theme.markdown.code,
-      border: theme.markdown.border,
-      line: theme.markdown.muted,
+      background: palette.page.panel,
+      foreground: palette.terminal.foreground ?? '#c0caf5',
+      primary: palette.markdown.heading,
+      secondary: palette.markdown.code,
+      border: palette.markdown.border,
+      line: palette.markdown.muted,
     });
   });
 }
@@ -185,14 +190,22 @@ async function writeDiagram(
 export function TerminalWindow() {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const [activeTheme, setActiveTheme] = useState(initialTheme);
   const shell = useMemo(() => {
     const registry = createRegistry();
-    return new Shell(new VirtualFileSystem(buildManifest(), registry.names()), registry, theme);
+    return new Shell(
+      new VirtualFileSystem(buildManifest(), registry.names()),
+      registry,
+      initialTheme,
+      config.terminal.theme,
+      themeNames,
+    );
   }, []);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    let currentTheme = initialTheme;
 
     const terminal = new Terminal({
       allowProposedApi: true,
@@ -204,7 +217,7 @@ export function TerminalWindow() {
       lineHeight: 1.25,
       screenReaderMode: true,
       scrollback: config.terminal.scrollback,
-      theme: theme.terminal,
+      theme: currentTheme.terminal,
     });
     terminalRef.current = terminal;
     const fitAddon = new FitAddon();
@@ -238,7 +251,7 @@ export function TerminalWindow() {
     let completion: CompletionMenu | null = null;
 
     const promptText = () => config.terminal.prompt.replaceAll('{cwd}', shell.cwd);
-    const promptAnsi = () => paint(promptText(), theme.terminal.green ?? '#9ece6a', ansi.bold);
+    const promptAnsi = () => paint(promptText(), currentTheme.terminal.green ?? '#9ece6a', ansi.bold);
     const writePrompt = () => terminal.write(promptAnsi());
     const redraw = () => {
       terminal.write(`\r\x1b[2K${promptAnsi()}${sanitizeTerminalText(line.join(''))}`);
@@ -247,9 +260,9 @@ export function TerminalWindow() {
     };
 
     const completionColor = (suggestion: CompletionSuggestion) => {
-      if (suggestion.kind === 'command' || suggestion.kind === 'executable') return theme.terminal.green ?? '#9ece6a';
-      if (suggestion.kind === 'directory') return theme.terminal.blue ?? '#7aa2f7';
-      return theme.terminal.white ?? theme.terminal.foreground ?? '#c0caf5';
+      if (suggestion.kind === 'command' || suggestion.kind === 'executable') return currentTheme.terminal.green ?? '#9ece6a';
+      if (suggestion.kind === 'directory') return currentTheme.terminal.blue ?? '#7aa2f7';
+      return currentTheme.terminal.white ?? currentTheme.terminal.foreground ?? '#c0caf5';
     };
 
     const eraseCompletion = () => {
@@ -279,7 +292,7 @@ export function TerminalWindow() {
         },
       ));
       if (layout.showPageCounter) {
-        lines.push(paint(`[${layout.page + 1}/${layout.pageCount}]`, theme.markdown.muted));
+        lines.push(paint(`[${layout.page + 1}/${layout.pageCount}]`, currentTheme.markdown.muted));
       }
 
       // Writing the pager may scroll the viewport; moving back by its rendered height
@@ -309,6 +322,17 @@ export function TerminalWindow() {
         terminal.write('\x07');
         return;
       }
+      if (result.suggestions.length === 1) {
+        const selectedInput = applyCompletionSuggestion(
+          result.prefix,
+          result.suffix,
+          result.suggestions[0],
+        );
+        line = [...selectedInput.line];
+        cursor = selectedInput.cursor;
+        redraw();
+        return;
+      }
       completion = {
         suggestions: result.suggestions,
         prefix: result.prefix,
@@ -321,7 +345,7 @@ export function TerminalWindow() {
       renderCompletion();
     };
 
-    const moveCompletion = (direction: 'next' | 'previous' | 'up' | 'down') => {
+    const moveCompletion = (direction: 'next' | 'previous' | 'left' | 'right') => {
       if (!completion) return;
       const layout = layoutCompletions(
         completion.suggestions,
@@ -329,18 +353,17 @@ export function TerminalWindow() {
         Math.max(1, terminal.cols - 1),
         Math.max(1, terminal.rows - 4),
       );
-      const offset = direction === 'next' ? 1
-        : direction === 'previous' ? -1
-          : direction === 'down' ? layout.columnCount : -layout.columnCount;
-      completion.selectedIndex = moveCompletionIndex(
-        completion.selectedIndex,
-        completion.suggestions.length,
-        offset,
+      completion.selectedIndex = direction === 'left' || direction === 'right'
+        ? moveCompletionColumn(completion.selectedIndex, layout, direction === 'right' ? 1 : -1)
+        : moveCompletionIndex(
+          completion.selectedIndex,
+          completion.suggestions.length,
+          direction === 'next' ? 1 : -1,
       );
       const selected = completion.suggestions[completion.selectedIndex!];
-      const selectedInput = `${completion.prefix}${quoteShellWord(selected.value)}`;
-      line = [...selectedInput, ...completion.suffix];
-      cursor = [...selectedInput].length;
+      const selectedInput = applyCompletionSuggestion(completion.prefix, completion.suffix, selected);
+      line = [...selectedInput.line];
+      cursor = selectedInput.cursor;
       renderCompletion();
     };
     // This is the trust boundary: plain command output is sanitized, while ANSI chunks
@@ -350,9 +373,16 @@ export function TerminalWindow() {
         if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
         if (chunk.type === 'text') await xtermWrite(terminal, terminalLines(sanitizeTerminalText(chunk.value)));
         else if (chunk.type === 'ansi') await xtermWrite(terminal, terminalLines(chunk.value));
-        else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal);
-        else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal);
-        else if (chunk.type === 'diagram') await writeDiagram(terminal, chunk, controller.signal);
+        else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal, currentTheme);
+        else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal, currentTheme);
+        else if (chunk.type === 'diagram') await writeDiagram(terminal, chunk, controller.signal, currentTheme);
+        else if (chunk.type === 'theme') {
+          currentTheme = loadTheme(chunk.name);
+          shell.setTheme(chunk.name, currentTheme);
+          terminal.options.theme = currentTheme.terminal;
+          setActiveTheme(currentTheme);
+          terminal.refresh(0, terminal.rows - 1);
+        }
         else if (chunk.type === 'clear') await xtermWrite(terminal, '\x1b[2J\x1b[H');
         else if (chunk.type === 'reset') {
           shell.reset();
@@ -385,7 +415,7 @@ export function TerminalWindow() {
         await renderChunks(result.chunks, controller);
       } catch (exception) {
         if (controller.signal.aborted) terminal.write('^C\r\n');
-        else terminal.write(terminalLines(paint(`${(exception as Error).message}\n`, theme.markdown.error)));
+        else terminal.write(terminalLines(paint(`${(exception as Error).message}\n`, currentTheme.markdown.error)));
       } finally {
         busy = false;
         activeController = null;
@@ -408,10 +438,10 @@ export function TerminalWindow() {
         return;
       }
       if (completion) {
-        if (data === '\t' || data === '\x1b[C') { moveCompletion('next'); return; }
-        if (data === '\x1b[Z' || data === '\x1b[D') { moveCompletion('previous'); return; }
-        if (data === '\x1b[A') { moveCompletion('up'); return; }
-        if (data === '\x1b[B') { moveCompletion('down'); return; }
+        if (data === '\t' || data === '\x1b[B') { moveCompletion('next'); return; }
+        if (data === '\x1b[Z' || data === '\x1b[A') { moveCompletion('previous'); return; }
+        if (data === '\x1b[C') { moveCompletion('right'); return; }
+        if (data === '\x1b[D') { moveCompletion('left'); return; }
         if (data === '\x1b') { closeCompletion(true); return; }
         if (data === '\r' || data === '\n') {
           if (completion.selectedIndex !== null) { closeCompletion(false); return; }
@@ -471,7 +501,7 @@ export function TerminalWindow() {
     void renderWelcome(startupController)
       .catch((exception) => {
         if (!startupController.signal.aborted) {
-          terminal.write(terminalLines(paint(`${(exception as Error).message}\n`, theme.markdown.error)));
+          terminal.write(terminalLines(paint(`${(exception as Error).message}\n`, currentTheme.markdown.error)));
         }
       })
       .finally(() => {
@@ -494,17 +524,17 @@ export function TerminalWindow() {
   }, [shell]);
 
   const variables = {
-    colorScheme: theme.colorScheme,
-    '--page-bg': theme.page.background,
-    '--panel-bg': theme.page.panel,
-    '--titlebar-bg': theme.page.titlebar,
-    '--panel-border': theme.page.border,
-    '--title-color': theme.page.title,
-    '--panel-shadow': theme.page.shadow,
-    '--status-red': theme.terminal.red,
-    '--status-yellow': theme.terminal.yellow,
-    '--status-green': theme.terminal.green,
-    '--scrollbar-thumb': theme.terminal.brightBlack,
+    colorScheme: activeTheme.colorScheme,
+    '--page-bg': activeTheme.page.background,
+    '--panel-bg': activeTheme.page.panel,
+    '--titlebar-bg': activeTheme.page.titlebar,
+    '--panel-border': activeTheme.page.border,
+    '--title-color': activeTheme.page.title,
+    '--panel-shadow': activeTheme.page.shadow,
+    '--status-red': activeTheme.terminal.red,
+    '--status-yellow': activeTheme.terminal.yellow,
+    '--status-green': activeTheme.terminal.green,
+    '--scrollbar-thumb': activeTheme.terminal.brightBlack,
     '--window-max-width': `${config.terminal.maxWidth}px`,
     '--window-height-percent': config.terminal.heightPercent,
   } as React.CSSProperties;
