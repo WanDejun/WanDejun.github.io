@@ -13,7 +13,7 @@ Welcome to a personal homepage that behaves like a small, read-only Linux shell.
 
 | Command | Purpose |
 | --- | --- |
-| `tree /blogs` | Browse the archive |
+| `tree /posts` | Browse the archive |
 | `grep pattern file` | Search a post |
 | `render file.md` | Read the rendered version |
 
@@ -21,14 +21,14 @@ Welcome to a personal homepage that behaves like a small, read-only Linux shell.
 
 ```typescript
 const prompt = (cwd: string) => `neko:${cwd}$ `;
-console.log(prompt('/blogs'));
+console.log(prompt('/posts'));
 ```
 
 Try `cat` on this file to compare the raw Markdown with this rendered view.
 
 ## A local image
 
-The image below is loaded from the same nested blog directory and displayed
+The image below is loaded from the same post directory and displayed
 through the iTerm2 inline image protocol.
 
 ![A local example image](./example-coat.png)

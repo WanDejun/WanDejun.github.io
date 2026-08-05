@@ -69,21 +69,27 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
   await waitForTerminalReady(page);
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('github.com/WanDejun');
 
-  await runCommand(page, 'cd /blogs');
+  await runCommand(page, 'ls /');
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('posts/');
+  await expect(terminal).toContainText('project/');
+  await expect(terminal).toContainText('slide/');
+
+  await runCommand(page, 'cd /posts');
   await runCommand(page, 'pwd');
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('/blogs');
+  await expect(terminal).toContainText('/posts');
 
   await runCommand(page, 'help');
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('publish them on the next deployment', { timeout: 15_000 });
+  await expect(terminal).toContainText('standalone slide directories', { timeout: 15_000 });
 });
 
 test('selects path completions with Tab and arrow keys before executing', async ({ page }) => {
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'cd /blogs/notes');
+  await runCommand(page, 'cd /posts');
   const terminal = page.locator('.xterm-accessibility-tree');
   const input = page.locator('.xterm-helper-textarea');
-  await expect(terminal).toContainText('neko:/blogs/notes$');
+  await expect(terminal).toContainText('neko:/posts$');
 
   await input.focus();
   await input.pressSequentially('cat ');
@@ -111,7 +117,7 @@ test('selects path completions with Tab and arrow keys before executing', async 
 test('switches themes without resetting the shell session', async ({ page }) => {
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'cd /blogs');
+  await runCommand(page, 'cd /posts');
   const terminal = page.locator('.xterm-accessibility-tree');
   const input = page.locator('.xterm-helper-textarea');
   await input.focus();
@@ -126,7 +132,41 @@ test('switches themes without resetting the shell session', async ({ page }) => 
   ))).toBe('rgb(242, 229, 188)');
 
   await runCommand(page, 'pwd');
-  await expect(terminal).toContainText('/blogs');
+  await expect(terminal).toContainText('/posts');
+});
+
+test('opens a static slide and transfers keyboard focus into it', async ({ page }) => {
+  await page.goto('/');
+  await waitForTerminalReady(page);
+  await runCommand(page, 'render /slide/example/index.html');
+
+  const overlay = page.locator('.document-window');
+  const frameElement = page.locator('.document-frame');
+  const frame = page.frameLocator('.document-frame');
+  await expect(overlay).toBeVisible();
+  await expect(frameElement).toBeFocused();
+  await expect(frame.locator('html')).toHaveAttribute('data-slide', '1');
+  const viewport = page.viewportSize()!;
+  const overlayBox = await overlay.boundingBox();
+  expect(overlayBox).not.toBeNull();
+  expect(overlayBox!.x).toBeGreaterThanOrEqual(0);
+  expect(overlayBox!.y).toBeGreaterThanOrEqual(0);
+  expect(overlayBox!.x + overlayBox!.width).toBeLessThanOrEqual(viewport.width);
+  expect(overlayBox!.y + overlayBox!.height).toBeLessThanOrEqual(viewport.height);
+
+  await page.keyboard.press('ArrowRight');
+  await expect(frame.locator('html')).toHaveAttribute('data-last-key', 'ArrowRight');
+  await expect(frame.locator('html')).toHaveAttribute('data-slide', '2');
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  const terminalText = await terminal.textContent();
+  await page.keyboard.press('x');
+  await expect(frame.locator('html')).toHaveAttribute('data-last-key', 'x');
+  expect(await terminal.textContent()).toBe(terminalText);
+
+  await page.locator('.document-close').click();
+  await expect(overlay).not.toBeVisible();
+  await expect(page.locator('.xterm-helper-textarea')).toBeFocused();
 });
 
 test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {
@@ -135,7 +175,7 @@ test('renders a MathJax formula through the iTerm2 image layer', async ({ page }
   await page.route('**/src/markdown/renderDiagram.ts*', (route) => route.abort());
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'render /blogs/notes/hello-terminal.md');
+  await runCommand(page, 'render /posts/hello-terminal.md');
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('formula unavailable');
   await expectOpaqueImageLayer(page);
@@ -147,7 +187,7 @@ test('renders a Mermaid diagram through the iTerm2 image layer', async ({ page }
   await page.route('**/src/markdown/renderFormula.ts*', (route) => route.abort());
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'render /blogs/notes/hello-terminal.md');
+  await runCommand(page, 'render /posts/hello-terminal.md');
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
   await expectOpaqueImageLayer(page);
@@ -163,7 +203,7 @@ test('renders Markdown Emoji and bundled Nerd Font glyphs', async ({ page }) => 
   expect(emoji.opaque).toBeGreaterThan(100);
   expect(emoji.colors).toBeGreaterThan(5);
 
-  await runCommand(page, 'render /blogs/notes/zz-emoji.md');
+  await runCommand(page, 'render /posts/zz-emoji.md');
   const terminal = page.locator('.xterm-accessibility-tree');
   await expect(terminal).toContainText('Markdown shortcodes become Emoji: 🚀 ✨ 😺', { timeout: 30_000 });
   await expect(terminal).toContainText('Powerline glyphs: \ue0b0 \ue0b2');

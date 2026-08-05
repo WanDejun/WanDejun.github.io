@@ -4,15 +4,16 @@ This is a read-only Linux-inspired shell for exploring the site.
 
 GETTING STARTED
   ls /                  List the virtual root
-  tree /blogs           Browse every post
-  cd /blogs             Change the working directory
+  tree /posts           Browse every post
+  cd /posts             Change the working directory
   cat path/to/post.md   Read Markdown source
   render path/to/post.md  Render Markdown, formulas, diagrams, and images
+  render /slide/example/index.html  Open an HTML slide in a floating window
   theme gruvbox-light  Switch the terminal and page color palette
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.
-  render accepts one .md file and cannot be used in a pipeline.
+  render accepts one .md file or /slide/.../index.html and cannot use a pipeline.
   Use Up/Down for history, Tab for completion, and Ctrl+L to clear.
   Ctrl+C cancels the current line or a running command.
 
@@ -22,12 +23,13 @@ COMMANDS
   sort      tail   theme   tr      tree     uniq     wc      which
 
 EXAMPLES
-  find /blogs -type f -name '*.md'
-  grep -in terminal /blogs/**/*.md | head -n 5
-  cat /blogs/notes/hello-terminal.md
-  render /blogs/notes/hello-terminal.md
+  find /posts -type f -name '*.md'
+  grep -in terminal /posts/**/*.md | head -n 5
+  cat /posts/hello-terminal.md
+  render /posts/hello-terminal.md
+  render /slide/example/index.html
   theme tokyonight-day
   printf '%s\n' alpha beta beta | sort | uniq -c
 
-The filesystem is generated from this repository. Add Markdown and image
-files under blogs/ to publish them on the next deployment.
+The filesystem is generated from this repository. Add posts, project notes,
+and standalone slide directories under content/ to publish them.

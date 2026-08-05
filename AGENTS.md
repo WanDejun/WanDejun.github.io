@@ -10,7 +10,7 @@ This is a React, TypeScript, Vite, and xterm.js static site. Application code li
 - `src/markdown/` renders Markdown as ANSI and image output.
 - `src/themes/` contains TOML color palettes.
 
-Unit tests live in `tests/`; Playwright scenarios live in `e2e/`. Files under `blogs/` are mounted at `/blogs`, while `content/` mirrors the virtual root. Edit user-facing settings in `config.toml`. Do not edit generated `dist/` output.
+Unit tests live in `tests/`; Playwright scenarios live in `e2e/`. Files under `content/` mirror the virtual root: posts use `content/posts/`, project articles use `content/project/`, and static presentations use `content/slide/`. Edit user-facing settings in `config.toml`. Do not edit generated `dist/` output.
 
 ## Build, Test, and Development Commands
 

@@ -13,9 +13,11 @@ beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
-    { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
-    { path: '/blogs/notes/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
-    { path: '/blogs/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
+    { path: '/posts/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
+    { path: '/posts/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
+    { path: '/posts/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
+    { path: '/project/page.html', content: '<h1>Project</h1>', size: 16, mime: 'text/html' },
+    { path: '/slide/example/index.html', content: '<h1>Slides</h1>', size: 15, mime: 'text/html' },
   ], registry.names());
   shell = new Shell(fs, registry, theme, 'tokyonight-night', themeNames);
 });
@@ -28,17 +30,17 @@ describe('Shell', () => {
   });
 
   it('changes cwd and runs text pipelines', async () => {
-    await shell.execute('cd /blogs/notes', controller());
-    expect(shell.cwd).toBe('/blogs/notes');
+    await shell.execute('cd /posts', controller());
+    expect(shell.cwd).toBe('/posts');
     const result = await shell.execute(`printf '%s\\n' beta alpha beta | sort | uniq -c`, controller());
     expect(result.chunks).toEqual([{ type: 'text', value: '      1 alpha\n      2 beta\n' }]);
   });
 
   it('finds Markdown through a quoted glob expression', async () => {
-    const result = await shell.execute(`find /blogs -type f -name '*.md'`, controller());
+    const result = await shell.execute(`find /posts -type f -name '*.md'`, controller());
     expect(result.chunks).toEqual([{
       type: 'text',
-      value: '/blogs/my notes/draft post.md\n/blogs/notes/post.md\n',
+      value: '/posts/my notes/draft post.md\n/posts/post.md\n',
     }]);
   });
 
@@ -49,7 +51,7 @@ describe('Shell', () => {
       suggestions: [{ value: 'render', kind: 'command' }],
     });
 
-    await shell.execute('cd /blogs/notes', controller());
+    await shell.execute('cd /posts', controller());
     expect(shell.complete('cat p')).toEqual({
       prefix: 'cat ',
       suffix: '',
@@ -64,10 +66,10 @@ describe('Shell', () => {
       suffix: ' | wc',
       suggestions: [{ value: 'post.md', kind: 'file' }],
     });
-    expect(shell.complete("cat '/blogs/my notes/'")).toEqual({
+    expect(shell.complete("cat '/posts/my notes/'")).toEqual({
       prefix: 'cat ',
       suffix: '',
-      suggestions: [{ value: '/blogs/my notes/draft post.md', kind: 'file' }],
+      suggestions: [{ value: '/posts/my notes/draft post.md', kind: 'file' }],
     });
 
     expect(shell.complete('ls ')).toEqual({ prefix: 'ls ', suffix: '', suggestions: [] });
@@ -150,11 +152,11 @@ describe('Shell', () => {
   });
 
   it('keeps cat raw and lets render emit formula, diagram, and image chunks', async () => {
-    const cat = await shell.execute('cat /blogs/notes/post.md', controller());
+    const cat = await shell.execute('cat /posts/post.md', controller());
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining('![Photo]') });
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining(':rocket:') });
 
-    const rendered = await shell.execute('render /blogs/notes/post.md', controller());
+    const rendered = await shell.execute('render /posts/post.md', controller());
     expect(rendered.chunks).toContainEqual({ type: 'formula', source: 'E = mc^2', display: true });
     expect(rendered.chunks).toContainEqual({ type: 'diagram', source: 'flowchart LR\n  A --> B' });
     expect(rendered.chunks.some((chunk) => chunk.type === 'image' && chunk.source === '/photo.png')).toBe(true);
@@ -166,6 +168,14 @@ describe('Shell', () => {
     expect(renderedText).toContain('Emoji 🚀 and 😺; code  :rocket: .');
   });
 
+  it('opens only slide index HTML files as standalone documents', async () => {
+    expect((await shell.execute('render /slide/example/index.html', controller())).chunks).toEqual([
+      { type: 'document', path: '/slide/example/index.html', title: 'example' },
+    ]);
+    expect((await shell.execute('render /project/page.html', controller())).exitCode).toBe(2);
+    expect((await shell.execute('render /slide/missing/index.html', controller())).exitCode).toBe(1);
+  });
+
   it('exposes render instead of glow and rejects invalid or piped input', async () => {
     expect(shell.registry.get('render')).toBeDefined();
     expect(shell.registry.get('glow')).toBeUndefined();
@@ -173,9 +183,9 @@ describe('Shell', () => {
     for (const command of [
       'render',
       'render /help',
-      'render /blogs/notes/post.md /blogs/notes/post.md',
-      'render /blogs/notes/post.md | grep Post',
-      'cat /blogs/notes/post.md | render /blogs/notes/post.md',
+      'render /posts/post.md /posts/post.md',
+      'render /posts/post.md | grep Post',
+      'cat /posts/post.md | render /posts/post.md',
     ]) {
       const result = await shell.execute(command, controller());
       expect(result.exitCode).toBe(2);

@@ -20,10 +20,13 @@ npm run build
 
 ## Content
 
-- Add Markdown and image assets anywhere under `blogs/`. The directory is
-  recursively mounted at `/blogs` during the Vite build.
-- Add other virtual root files and directories under `content/`. For example,
-  `content/help` becomes `/help`.
+- Add Markdown posts and their images under `content/posts/`; project-oriented
+  articles belong under `content/project/`.
+- Add standalone HTML presentations under `content/slide/NAME/index.html`.
+  These directories are copied unchanged so local CSS, JavaScript, and image
+  paths continue to work. Open them with `render /slide/NAME/index.html`.
+- Everything under `content/` mirrors the virtual root. For example,
+  `content/posts/example.md` becomes `/posts/example.md`.
 - Edit the prompt, terminal sizing, active theme, and image limits in
   `config.toml`.
 - Add or edit color palettes in `src/themes/`; the active palette is selected by
@@ -38,7 +41,7 @@ Markdown with MathJax formula blocks, Mermaid fenced code blocks, and local or
 HTTPS images. Literal Unicode Emoji and GitHub-style shortcodes such as
 `:rocket:` are supported. The terminal bundles Nerd Font and Emoji fallback
 fonts, so visitors do not need to install them locally. `render` accepts one
-`.md` file and is intentionally unavailable in pipelines.
+Markdown file or slide `index.html` and is intentionally unavailable in pipelines.
 
 ## Deployment
 

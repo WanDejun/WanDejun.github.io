@@ -16,6 +16,7 @@ import { createRegistry } from '../shell/createRegistry';
 import { Shell } from '../shell/Shell';
 import type { CompletionSuggestion } from '../shell/types';
 import type { AppTheme, OutputChunk } from '../types';
+import { DocumentOverlay, type DocumentPreview } from './DocumentOverlay';
 
 interface CompletionMenu {
   suggestions: CompletionSuggestion[];
@@ -191,6 +192,7 @@ export function TerminalWindow() {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const [activeTheme, setActiveTheme] = useState(initialTheme);
+  const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
   const shell = useMemo(() => {
     const registry = createRegistry();
     return new Shell(
@@ -376,6 +378,7 @@ export function TerminalWindow() {
         else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal, currentTheme);
         else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal, currentTheme);
         else if (chunk.type === 'diagram') await writeDiagram(terminal, chunk, controller.signal, currentTheme);
+        else if (chunk.type === 'document') setDocumentPreview({ path: chunk.path, title: chunk.title });
         else if (chunk.type === 'theme') {
           currentTheme = loadTheme(chunk.name);
           shell.setTheme(chunk.name, currentTheme);
@@ -539,6 +542,11 @@ export function TerminalWindow() {
     '--window-height-percent': config.terminal.heightPercent,
   } as React.CSSProperties;
 
+  const closeDocument = () => {
+    setDocumentPreview(null);
+    window.requestAnimationFrame(() => terminalRef.current?.focus());
+  };
+
   return (
     <main className="page" style={variables}>
       <section className="terminal-window" aria-label="Interactive terminal">
@@ -555,6 +563,7 @@ export function TerminalWindow() {
           <div ref={hostRef} className="terminal-mount" />
         </div>
       </section>
+      {documentPreview && <DocumentOverlay document={documentPreview} onClose={closeDocument} />}
     </main>
   );
 }
