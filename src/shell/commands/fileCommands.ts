@@ -1,6 +1,22 @@
 import { basename as pathBasename, dirname as pathDirname } from '../../filesystem/VirtualFileSystem';
-import type { Command } from '../types';
+import type { VirtualNode } from '../../filesystem/VirtualFileSystem';
+import { paint } from '../ansi';
+import type { Command, CommandContext } from '../types';
 import { error, humanSize, mode, readSources, splitLines, wildcardMatch } from './utils';
+
+function nodeColor(node: VirtualNode, context: CommandContext): string {
+  if (node.type === 'directory') return context.theme.terminal.blue ?? '#7aa2f7';
+  if (node.executable) return context.theme.terminal.green ?? '#9ece6a';
+  return context.theme.terminal.white ?? '#a9b1d6';
+}
+
+function nodeName(node: VirtualNode): string {
+  return `${node.name}${node.type === 'directory' ? '/' : ''}`;
+}
+
+function coloredNodeName(node: VirtualNode, context: CommandContext): string {
+  return paint(nodeName(node), nodeColor(node, context));
+}
 
 export const catCommand: Command = {
   name: 'cat', description: 'Concatenate files', usage: 'cat [-n] [FILE ...]',
@@ -36,19 +52,29 @@ export const lsCommand: Command = {
     }
     const targets = paths.length ? paths : ['.'];
     const blocks: string[] = [];
+    const coloredBlocks: string[] = [];
     try {
       for (const target of targets) {
         const node = context.fs.require(target, context.cwd);
         let entries = node.type === 'directory' ? context.fs.list(target, context.cwd) : [node];
         if (!all) entries = entries.filter((entry) => !entry.name.startsWith('.'));
         const heading = targets.length > 1 ? `${target}:\n` : '';
+        const coloredHeading = targets.length > 1 ? `${paint(target, nodeColor(node, context))}:\n` : '';
         if (long) {
-          blocks.push(`${heading}${entries.map((entry) => `${mode(entry)}  ${String(entry.size).padStart(8)} ${human ? humanSize(entry.size).padStart(6) : ''} ${entry.name}${entry.type === 'directory' ? '/' : ''}`.replace(/ +$/g, '')).join('\n')}`);
+          blocks.push(`${heading}${entries.map((entry) => `${mode(entry)}  ${String(entry.size).padStart(8)} ${human ? humanSize(entry.size).padStart(6) : ''} ${nodeName(entry)}`.replace(/ +$/g, '')).join('\n')}`);
+          coloredBlocks.push(`${coloredHeading}${entries.map((entry) => `${mode(entry)}  ${String(entry.size).padStart(8)} ${human ? humanSize(entry.size).padStart(6) : ''} ${coloredNodeName(entry, context)}`.replace(/ +$/g, '')).join('\n')}`);
         } else {
-          blocks.push(`${heading}${entries.map((entry) => `${entry.name}${entry.type === 'directory' ? '/' : ''}`).join('  ')}`);
+          blocks.push(`${heading}${entries.map(nodeName).join('  ')}`);
+          coloredBlocks.push(`${coloredHeading}${entries.map((entry) => coloredNodeName(entry, context)).join('  ')}`);
         }
       }
-      return { stdout: `${blocks.join('\n\n')}${blocks.some(Boolean) ? '\n' : ''}` };
+      const suffix = blocks.some(Boolean) ? '\n' : '';
+      const stdout = `${blocks.join('\n\n')}${suffix}`;
+      const coloredOutput = `${coloredBlocks.join('\n\n')}${suffix}`;
+      return {
+        stdout,
+        chunks: context.isFinal ? [{ type: 'ansi', value: coloredOutput }] : undefined,
+      };
     } catch (exception) {
       return { stdout: '', stderr: error('ls', (exception as Error).message), exitCode: 1 };
     }
@@ -70,6 +96,7 @@ export const treeCommand: Command = {
     try {
       const root = context.fs.require(target, context.cwd);
       const lines = [root.path];
+      const coloredLines = [paint(root.path, nodeColor(root, context))];
       let directories = root.type === 'directory' ? 1 : 0; let files = root.type === 'file' ? 1 : 0;
       const visit = (path: string, prefix: string, depth: number) => {
         if (depth > maxDepth) return;
@@ -78,6 +105,7 @@ export const treeCommand: Command = {
         entries.forEach((entry, index) => {
           const last = index === entries.length - 1;
           lines.push(`${prefix}${last ? '└── ' : '├── '}${entry.name}${entry.type === 'directory' ? '/' : ''}`);
+          coloredLines.push(`${prefix}${last ? '└── ' : '├── '}${coloredNodeName(entry, context)}`);
           if (entry.type === 'directory') {
             directories += 1;
             visit(entry.path, `${prefix}${last ? '    ' : '│   '}`, depth + 1);
@@ -85,8 +113,13 @@ export const treeCommand: Command = {
         });
       };
       if (root.type === 'directory') visit(root.path, '', 1);
-      lines.push('', `${directories} director${directories === 1 ? 'y' : 'ies'}, ${files} file${files === 1 ? '' : 's'}`);
-      return { stdout: `${lines.join('\n')}\n` };
+      const summary = `${directories} director${directories === 1 ? 'y' : 'ies'}, ${files} file${files === 1 ? '' : 's'}`;
+      lines.push('', summary);
+      coloredLines.push('', summary);
+      return {
+        stdout: `${lines.join('\n')}\n`,
+        chunks: context.isFinal ? [{ type: 'ansi', value: `${coloredLines.join('\n')}\n` }] : undefined,
+      };
     } catch (exception) {
       return { stdout: '', stderr: error('tree', (exception as Error).message), exitCode: 1 };
     }

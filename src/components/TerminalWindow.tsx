@@ -301,7 +301,9 @@ export function TerminalWindow() {
           <div className="terminal-title">{config.site.windowTitle}</div>
           <div className="titlebar-balance" aria-hidden="true" />
         </header>
-        <div ref={hostRef} className="terminal-host" />
+        <div className="terminal-host">
+          <div ref={hostRef} className="terminal-mount" />
+        </div>
       </section>
     </main>
   );

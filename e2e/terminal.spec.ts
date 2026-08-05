@@ -58,4 +58,10 @@ test('keeps the rounded terminal inside a mobile viewport', async ({ page }) => 
   expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
   expect(Math.abs(box!.height - viewport.height * 0.9)).toBeLessThan(2);
   expect(await page.locator('.terminal-window').evaluate((element) => getComputedStyle(element).borderRadius)).not.toBe('0px');
+
+  const terminalBox = await page.locator('.xterm').boundingBox();
+  const screenBox = await page.locator('.xterm-screen').boundingBox();
+  expect(terminalBox).not.toBeNull();
+  expect(screenBox).not.toBeNull();
+  expect(screenBox!.y + screenBox!.height).toBeLessThanOrEqual(terminalBox!.y + terminalBox!.height + 1);
 });

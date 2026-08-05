@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { theme } from '../src/config';
 import { VirtualFileSystem } from '../src/filesystem/VirtualFileSystem';
 import { createRegistry } from '../src/shell/createRegistry';
+import { ansi } from '../src/shell/ansi';
 import { Shell } from '../src/shell/Shell';
 
 const controller = () => new AbortController().signal;
@@ -34,6 +35,22 @@ describe('Shell', () => {
   it('finds Markdown through a quoted glob expression', async () => {
     const result = await shell.execute(`find /blogs -type f -name '*.md'`, controller());
     expect(result.chunks).toEqual([{ type: 'text', value: '/blogs/notes/post.md\n' }]);
+  });
+
+  it('colors directories, executables, and regular files without polluting pipes', async () => {
+    const root = await shell.execute('ls /', controller());
+    expect(root.chunks).toEqual([{ type: 'ansi', value: expect.any(String) }]);
+    const rootOutput = root.chunks[0].type === 'ansi' ? root.chunks[0].value : '';
+    expect(rootOutput).toContain(`${ansi.color(theme.terminal.blue!)}bin/`);
+    expect(rootOutput).toContain(`${ansi.color(theme.terminal.white!)}help`);
+
+    const bin = await shell.execute('tree /bin -L 1', controller());
+    const binOutput = bin.chunks[0].type === 'ansi' ? bin.chunks[0].value : '';
+    expect(binOutput).toContain(`${ansi.color(theme.terminal.green!)}cat`);
+
+    const piped = await shell.execute('ls /bin/cat | grep cat', controller());
+    expect(piped.chunks).toEqual([{ type: 'text', value: 'cat\n' }]);
+    expect((piped.chunks[0] as { value: string }).value).not.toContain('\x1b');
   });
 
   it('keeps cat raw and lets glow emit a terminal image chunk', async () => {
