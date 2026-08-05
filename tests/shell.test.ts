@@ -14,6 +14,7 @@ beforeEach(() => {
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
     { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n', size: 91, mime: 'text/markdown', url: '/post.md' },
     { path: '/blogs/notes/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
+    { path: '/blogs/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
   ], registry.names());
   shell = new Shell(fs, registry, theme);
 });
@@ -34,7 +35,39 @@ describe('Shell', () => {
 
   it('finds Markdown through a quoted glob expression', async () => {
     const result = await shell.execute(`find /blogs -type f -name '*.md'`, controller());
-    expect(result.chunks).toEqual([{ type: 'text', value: '/blogs/notes/post.md\n' }]);
+    expect(result.chunks).toEqual([{
+      type: 'text',
+      value: '/blogs/my notes/draft post.md\n/blogs/notes/post.md\n',
+    }]);
+  });
+
+  it('returns typed command and path completion candidates', async () => {
+    expect(shell.complete('re')).toEqual({
+      prefix: '',
+      suffix: '',
+      suggestions: [{ value: 'render', kind: 'command' }],
+    });
+
+    await shell.execute('cd /blogs/notes', controller());
+    expect(shell.complete('cat p')).toEqual({
+      prefix: 'cat ',
+      suffix: '',
+      suggestions: [
+        { value: 'photo.png', kind: 'file' },
+        { value: 'post.md', kind: 'file' },
+      ],
+    });
+
+    expect(shell.complete('cat post.md | wc', 6)).toEqual({
+      prefix: 'cat ',
+      suffix: ' | wc',
+      suggestions: [{ value: 'post.md', kind: 'file' }],
+    });
+    expect(shell.complete("cat '/blogs/my notes/'")).toEqual({
+      prefix: 'cat ',
+      suffix: '',
+      suggestions: [{ value: '/blogs/my notes/draft post.md', kind: 'file' }],
+    });
   });
 
   it('colors directories, executables, and regular files without polluting pipes', async () => {

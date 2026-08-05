@@ -1,7 +1,7 @@
 import type { AppTheme, CommandOutput, OutputChunk } from '../types';
 import type { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
-import { parseCommandLine, ShellSyntaxError } from './parser';
-import type { CommandContext } from './types';
+import { findCompletionTarget, parseCommandLine, ShellSyntaxError } from './parser';
+import type { CommandContext, CompletionResult, CompletionSuggestion } from './types';
 import { CommandRegistry } from './CommandRegistry';
 
 export interface ShellResult {
@@ -77,44 +77,32 @@ export class Shell {
     return { chunks, exitCode: final.exitCode ?? 0 };
   }
 
-  complete(input: string): { replacement?: string; suggestions: string[] } {
-    const match = input.match(/(?:^|\s|\|)([^\s|]*)$/);
-    const fragment = match?.[1] ?? '';
-    const before = input.slice(0, input.length - fragment.length);
-    const isCommand = before.trim() === '' || before.trimEnd().endsWith('|');
-    const candidates = isCommand
-      ? this.registry.names().filter((name) => name.startsWith(fragment))
-      : this.pathCompletions(fragment);
-    if (candidates.length === 0) return { suggestions: [] };
-    const common = commonPrefix(candidates);
-    return {
-      replacement: common.length > fragment.length ? `${before}${common}` : undefined,
-      suggestions: candidates,
-    };
+  complete(input: string, cursor = input.length): CompletionResult {
+    const target = findCompletionTarget(input, cursor);
+    const candidates = target.isCommand
+      ? this.registry.names()
+        .filter((name) => name.startsWith(target.fragment))
+        .map((value): CompletionSuggestion => ({ value, kind: 'command' }))
+      : this.pathCompletions(target.fragment);
+    return { prefix: target.prefix, suffix: target.suffix, suggestions: candidates };
   }
 
-  private pathCompletions(fragment: string): string[] {
+  private pathCompletions(fragment: string): CompletionSuggestion[] {
     const slash = fragment.lastIndexOf('/');
     const directoryPart = slash === -1 ? '.' : fragment.slice(0, slash) || '/';
     const namePart = slash === -1 ? fragment : fragment.slice(slash + 1);
     try {
       return this.fs.list(directoryPart, this.cwd)
         .filter((node) => node.name.startsWith(namePart))
-        .map((node) => {
+        .map((node): CompletionSuggestion => {
           const prefix = slash === -1 ? '' : fragment.slice(0, slash + 1);
-          return `${prefix}${node.name}${node.type === 'directory' ? '/' : ''}`;
+          return {
+            value: `${prefix}${node.name}${node.type === 'directory' ? '/' : ''}`,
+            kind: node.type === 'directory' ? 'directory' : node.executable ? 'executable' : 'file',
+          };
         });
     } catch {
       return [];
     }
   }
-}
-
-function commonPrefix(values: string[]): string {
-  if (values.length === 0) return '';
-  let prefix = values[0];
-  for (const value of values.slice(1)) {
-    while (!value.startsWith(prefix)) prefix = prefix.slice(0, -1);
-  }
-  return prefix;
 }

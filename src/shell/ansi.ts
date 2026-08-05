@@ -4,6 +4,7 @@ export const ansi = {
   dim: '\x1b[2m',
   italic: '\x1b[3m',
   underline: '\x1b[4m',
+  inverse: '\x1b[7m',
   strike: '\x1b[9m',
   color(hex: string): string {
     const value = hex.replace('#', '');

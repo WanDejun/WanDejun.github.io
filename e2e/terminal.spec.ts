@@ -52,6 +52,37 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('publish them on the next deployment', { timeout: 15_000 });
 });
 
+test('selects path completions with Tab and arrow keys before executing', async ({ page }) => {
+  await page.goto('/');
+  await waitForTerminalReady(page);
+  await runCommand(page, 'cd /blogs/notes');
+  const terminal = page.locator('.xterm-accessibility-tree');
+  const input = page.locator('.xterm-helper-textarea');
+  await expect(terminal).toContainText('neko:/blogs/notes$');
+
+  await input.focus();
+  await input.pressSequentially('cat ');
+  await expect(terminal).toContainText('cat ');
+  await input.press('Tab');
+  await expect(terminal).toContainText('example-coat.png');
+  await expect(terminal).toContainText('hello-terminal.md');
+  await expect.poll(async () => {
+    const text = await terminal.textContent() ?? '';
+    return text.lastIndexOf('cat ') < text.lastIndexOf('example-coat.png');
+  }).toBe(true);
+
+  await input.press('Tab');
+  await expect(terminal).toContainText('cat example-coat.png');
+  await input.press('ArrowRight');
+  await expect(terminal).toContainText('cat hello-terminal.md');
+
+  // The first Enter accepts the highlighted candidate; the second executes it.
+  await input.press('Enter');
+  await expect(terminal).toContainText('cat hello-terminal.md');
+  await input.press('Enter');
+  await expect(terminal).toContainText('This flowchart is rendered by Mermaid.');
+});
+
 test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {
   // Suppress the other rich chunks so nontransparent pixels can only come from MathJax.
   await suppressExampleImage(page);

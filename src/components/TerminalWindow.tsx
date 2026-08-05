@@ -5,12 +5,26 @@ import { ImageAddon } from '@xterm/addon-image';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { config, theme } from '../config';
+import { layoutCompletions, moveCompletionIndex } from './completionPager';
 import { buildManifest } from '../filesystem/manifest';
 import { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText, terminalLines } from '../shell/ansi';
+import { fitCell, terminalCellWidth } from '../shell/columnLayout';
 import { createRegistry } from '../shell/createRegistry';
+import { quoteShellWord } from '../shell/parser';
 import { Shell } from '../shell/Shell';
+import type { CompletionSuggestion } from '../shell/types';
 import type { OutputChunk } from '../types';
+
+interface CompletionMenu {
+  suggestions: CompletionSuggestion[];
+  prefix: string;
+  suffix: string;
+  originalLine: string;
+  originalCursor: number;
+  selectedIndex: number | null;
+  renderedRows: number;
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -211,14 +225,110 @@ export function TerminalWindow() {
     let busy = false;
     let activeController: AbortController | null = null;
     let inputQueue = Promise.resolve();
+    let completion: CompletionMenu | null = null;
 
     const promptText = () => config.terminal.prompt.replaceAll('{cwd}', shell.cwd);
     const promptAnsi = () => paint(promptText(), theme.terminal.green ?? '#9ece6a', ansi.bold);
     const writePrompt = () => terminal.write(promptAnsi());
     const redraw = () => {
       terminal.write(`\r\x1b[2K${promptAnsi()}${sanitizeTerminalText(line.join(''))}`);
-      const tail = line.length - cursor;
+      const tail = terminalCellWidth(line.slice(cursor).join(''));
       if (tail > 0) terminal.write(`\x1b[${tail}D`);
+    };
+
+    const completionColor = (suggestion: CompletionSuggestion) => {
+      if (suggestion.kind === 'command' || suggestion.kind === 'executable') return theme.terminal.green ?? '#9ece6a';
+      if (suggestion.kind === 'directory') return theme.terminal.blue ?? '#7aa2f7';
+      return theme.terminal.white ?? theme.terminal.foreground ?? '#c0caf5';
+    };
+
+    const eraseCompletion = () => {
+      if (!completion?.renderedRows) return;
+      // The pager lives below the prompt; erase it without disturbing the command line.
+      terminal.write('\x1b[1B\r\x1b[J\x1b[1A');
+      completion.renderedRows = 0;
+    };
+
+    const renderCompletion = () => {
+      if (!completion) return;
+      if (completion.renderedRows) eraseCompletion();
+
+      const layout = layoutCompletions(
+        completion.suggestions,
+        completion.selectedIndex,
+        Math.max(1, terminal.cols - 1),
+        Math.max(1, terminal.rows - 4),
+      );
+      const lines = layout.rows.map((row) => row.map(({ index, suggestion }) => {
+        const { text, padding } = fitCell(suggestion.value, layout.columnWidth);
+        const styled = `${ansi.color(completionColor(suggestion))}${sanitizeTerminalText(text)}${ansi.reset}`;
+        const label = index === completion?.selectedIndex ? `${ansi.inverse}${styled}` : styled;
+        return `${label}${padding}`;
+      }).join(''));
+      if (layout.showPageCounter) {
+        lines.push(paint(`[${layout.page + 1}/${layout.pageCount}]`, theme.markdown.muted));
+      }
+
+      // Writing the pager may scroll the viewport; moving back by its rendered height
+      // reliably returns the cursor to the command immediately above it.
+      terminal.write(`\r\n${lines.join('\r\n')}\x1b[${lines.length}A`);
+      completion.renderedRows = lines.length;
+      redraw();
+    };
+
+    const closeCompletion = (restoreOriginal: boolean) => {
+      if (!completion) return;
+      const current = completion;
+      eraseCompletion();
+      if (restoreOriginal) {
+        line = [...current.originalLine];
+        cursor = current.originalCursor;
+      }
+      completion = null;
+      redraw();
+    };
+
+    const openCompletion = () => {
+      const input = line.join('');
+      const cursorOffset = line.slice(0, cursor).join('').length;
+      const result = shell.complete(input, cursorOffset);
+      if (result.suggestions.length === 0) {
+        terminal.write('\x07');
+        return;
+      }
+      completion = {
+        suggestions: result.suggestions,
+        prefix: result.prefix,
+        suffix: result.suffix,
+        originalLine: line.join(''),
+        originalCursor: cursor,
+        selectedIndex: null,
+        renderedRows: 0,
+      };
+      renderCompletion();
+    };
+
+    const moveCompletion = (direction: 'next' | 'previous' | 'up' | 'down') => {
+      if (!completion) return;
+      const layout = layoutCompletions(
+        completion.suggestions,
+        completion.selectedIndex,
+        Math.max(1, terminal.cols - 1),
+        Math.max(1, terminal.rows - 4),
+      );
+      const offset = direction === 'next' ? 1
+        : direction === 'previous' ? -1
+          : direction === 'down' ? layout.columnCount : -layout.columnCount;
+      completion.selectedIndex = moveCompletionIndex(
+        completion.selectedIndex,
+        completion.suggestions.length,
+        offset,
+      );
+      const selected = completion.suggestions[completion.selectedIndex!];
+      const selectedInput = `${completion.prefix}${quoteShellWord(selected.value)}`;
+      line = [...selectedInput, ...completion.suffix];
+      cursor = [...selectedInput].length;
+      renderCompletion();
     };
     // This is the trust boundary: plain command output is sanitized, while ANSI chunks
     // come only from internal renderers and may intentionally contain escape sequences.
@@ -279,22 +389,24 @@ export function TerminalWindow() {
       redraw();
     };
 
-    const complete = () => {
-      const result = shell.complete(line.join(''));
-      if (result.replacement) {
-        line = [...result.replacement];
-        cursor = line.length;
-        redraw();
-      } else if (result.suggestions.length > 1) {
-        terminal.write(`\r\n${result.suggestions.join('  ')}\r\n`);
-        redraw();
-      }
-    };
-
     const processData = async (data: string) => {
       if (busy) {
         if (data.includes('\x03')) activeController?.abort();
         return;
+      }
+      if (completion) {
+        if (data === '\t' || data === '\x1b[C') { moveCompletion('next'); return; }
+        if (data === '\x1b[Z' || data === '\x1b[D') { moveCompletion('previous'); return; }
+        if (data === '\x1b[A') { moveCompletion('up'); return; }
+        if (data === '\x1b[B') { moveCompletion('down'); return; }
+        if (data === '\x1b') { closeCompletion(true); return; }
+        if (data === '\r' || data === '\n') {
+          if (completion.selectedIndex !== null) { closeCompletion(false); return; }
+          closeCompletion(false);
+        } else {
+          // Editing after a preview accepts the highlighted value and closes the pager.
+          closeCompletion(false);
+        }
       }
       if (data === '\x1b[A') { setHistory(-1); return; }
       if (data === '\x1b[B') { setHistory(1); return; }
@@ -312,7 +424,7 @@ export function TerminalWindow() {
         while (cursor > 0 && !/\s/.test(line[cursor - 1])) { line.splice(--cursor, 1); }
         redraw(); return;
       }
-      if (data === '\t') { complete(); return; }
+      if (data === '\t') { openCompletion(); return; }
       if (data === '\x7f') { if (cursor > 0) { line.splice(--cursor, 1); redraw(); } return; }
 
       for (const character of data.replace(/\r\n/g, '\r')) {
@@ -330,7 +442,10 @@ export function TerminalWindow() {
       inputQueue = inputQueue.then(() => processData(data));
     });
     const resizeObserver = new ResizeObserver(() => {
-      try { fitAddon.fit(); } catch { /* The terminal may be between mount states. */ }
+      try {
+        fitAddon.fit();
+        if (completion) renderCompletion();
+      } catch { /* The terminal may be between mount states. */ }
     });
     resizeObserver.observe(host);
     const focus = () => terminal.focus();

@@ -21,5 +21,16 @@ export interface Command {
   execute(args: string[], stdin: string, context: CommandContext): Promise<CommandOutput> | CommandOutput;
 }
 
+export type CompletionSuggestion = {
+  value: string;
+  kind: 'command' | 'directory' | 'executable' | 'file';
+};
+
+export type CompletionResult = {
+  prefix: string;
+  suffix: string;
+  suggestions: CompletionSuggestion[];
+};
+
 export type ParsedWord = { value: string; allowGlob: boolean };
 export type ParsedCommand = { words: ParsedWord[] };
