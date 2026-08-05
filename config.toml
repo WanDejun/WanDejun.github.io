@@ -5,7 +5,7 @@ window_title = "neko@homepage: ~"
 [terminal]
 prompt = "neko:{cwd}$ "
 theme = "tokyonight-night"
-font_family = "JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, monospace"
+font_family = "JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, Neko Emoji, Neko Nerd Symbols, monospace"
 font_size = 15
 cursor_blink = true
 scrollback = 5000

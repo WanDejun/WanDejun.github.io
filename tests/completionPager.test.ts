@@ -38,6 +38,8 @@ describe('completion pager', () => {
     expect(fitCell('terminal', 5)).toEqual({ text: 'term…', padding: '' });
     expect(fitCell('博客', 5)).toEqual({ text: '博客', padding: ' ' });
     expect(terminalCellWidth('a博客')).toBe(5);
+    expect(terminalCellWidth('🚀')).toBe(2);
+    expect(terminalCellWidth('\ue0b0')).toBe(1);
   });
 
   it('does not exceed the available height just to show a page counter', () => {

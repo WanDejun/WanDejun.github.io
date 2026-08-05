@@ -34,8 +34,10 @@ Available palettes are `tokyonight-night`, `tokyonight-day`, `gruvbox-dark`,
 
 Use `cat` to read Markdown source and `render FILE.md` to render terminal-formatted
 Markdown with MathJax formula blocks, Mermaid fenced code blocks, and local or
-HTTPS images. `render` accepts one `.md` file and is intentionally unavailable
-in pipelines.
+HTTPS images. Literal Unicode Emoji and GitHub-style shortcodes such as
+`:rocket:` are supported. The terminal bundles Nerd Font and Emoji fallback
+fonts, so visitors do not need to install them locally. `render` accepts one
+`.md` file and is intentionally unavailable in pipelines.
 
 ## Deployment
 

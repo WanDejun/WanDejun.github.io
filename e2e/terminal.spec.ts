@@ -36,6 +36,31 @@ async function expectOpaqueImageLayer(page: import('@playwright/test').Page) {
   })).toBeGreaterThan(1000);
 }
 
+async function glyphPixels(
+  page: import('@playwright/test').Page,
+  family: string,
+  glyph: string,
+) {
+  return page.evaluate(async ({ family, glyph }) => {
+    await document.fonts.load(`36px "${family}"`, glyph);
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d')!;
+    context.font = `36px "${family}"`;
+    context.fillText(glyph, 4, 44);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let opaque = 0;
+    const colors = new Set<string>();
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] === 0) continue;
+      opaque += 1;
+      colors.add(`${pixels[index]},${pixels[index + 1]},${pixels[index + 2]}`);
+    }
+    return { opaque, colors: colors.size };
+  }, { family, glyph });
+}
+
 test('opens an interactive terminal and navigates the virtual filesystem', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Neko Terminal');
@@ -105,6 +130,22 @@ test('renders a Mermaid diagram through the iTerm2 image layer', async ({ page }
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
   await expectOpaqueImageLayer(page);
+});
+
+test('renders Markdown Emoji and bundled Nerd Font glyphs', async ({ page }) => {
+  await page.goto('/');
+  await waitForTerminalReady(page);
+
+  const nerd = await glyphPixels(page, 'Neko Nerd Symbols', '\ue0b0');
+  const emoji = await glyphPixels(page, 'Neko Emoji', '🚀');
+  expect(nerd.opaque).toBeGreaterThan(50);
+  expect(emoji.opaque).toBeGreaterThan(100);
+  expect(emoji.colors).toBeGreaterThan(5);
+
+  await runCommand(page, 'render /blogs/notes/zz-emoji.md');
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('Markdown shortcodes become Emoji: 🚀 ✨ 😺', { timeout: 30_000 });
+  await expect(terminal).toContainText('Powerline glyphs: \ue0b0 \ue0b2');
 });
 
 test('keeps the rounded terminal inside a mobile viewport', async ({ page }) => {

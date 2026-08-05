@@ -218,6 +218,16 @@ export function TerminalWindow() {
     terminal.open(host);
     fitAddon.fit();
 
+    // xterm draws text on canvas, so it must redraw once bundled fallback fonts are ready.
+    void Promise.all([
+      document.fonts.load(`${config.terminal.fontSize}px "Neko Nerd Symbols"`, '\ue0b0'),
+      document.fonts.load(`${config.terminal.fontSize}px "Neko Emoji"`, '🚀'),
+    ]).then(() => {
+      if (terminalRef.current !== terminal) return;
+      fitAddon.fit();
+      terminal.refresh(0, terminal.rows - 1);
+    }).catch(() => { /* System fallbacks remain usable if a bundled font cannot load. */ });
+
     let line: string[] = [];
     let cursor = 0;
     let historyIndex = -1;

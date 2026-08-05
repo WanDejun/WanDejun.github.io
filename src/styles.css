@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Neko Nerd Symbols";
+  src: url("./assets/fonts/SymbolsNerdFont-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Neko Emoji";
+  src: url("./assets/fonts/NotoColorEmoji-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
 :root {
   font-family: system-ui, sans-serif;
   color-scheme: dark light;

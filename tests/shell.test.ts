@@ -13,7 +13,7 @@ beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
-    { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n', size: 91, mime: 'text/markdown', url: '/post.md' },
+    { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
     { path: '/blogs/notes/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
     { path: '/blogs/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
   ], registry.names());
@@ -117,11 +117,18 @@ describe('Shell', () => {
   it('keeps cat raw and lets render emit formula, diagram, and image chunks', async () => {
     const cat = await shell.execute('cat /blogs/notes/post.md', controller());
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining('![Photo]') });
+    expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining(':rocket:') });
 
     const rendered = await shell.execute('render /blogs/notes/post.md', controller());
     expect(rendered.chunks).toContainEqual({ type: 'formula', source: 'E = mc^2', display: true });
     expect(rendered.chunks).toContainEqual({ type: 'diagram', source: 'flowchart LR\n  A --> B' });
     expect(rendered.chunks.some((chunk) => chunk.type === 'image' && chunk.source === '/photo.png')).toBe(true);
+    const renderedText = rendered.chunks
+      .filter((chunk) => chunk.type === 'ansi')
+      .map((chunk) => chunk.value)
+      .join('')
+      .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '');
+    expect(renderedText).toContain('Emoji 🚀 and 😺; code  :rocket: .');
   });
 
   it('exposes render instead of glow and rejects invalid or piped input', async () => {

@@ -6,6 +6,7 @@ import json from 'highlight.js/lib/languages/json';
 import markdown from 'highlight.js/lib/languages/markdown';
 import typescript from 'highlight.js/lib/languages/typescript';
 import { Marked, type Token, type TokenizerExtension, type Tokens } from 'marked';
+import { emojify } from 'node-emoji';
 import { basename, dirname } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText } from '../shell/ansi';
 import type { CommandContext } from '../shell/types';
@@ -102,7 +103,9 @@ export class TerminalMarkdownRenderer {
         }
         case 'table': {
           const table = token as Tokens.Table;
-          const rows = [table.header, ...table.rows].map((row) => row.map((cell) => sanitizeTerminalText(cell.text).replace(/\s+/g, ' ').trim()));
+          const rows = [table.header, ...table.rows].map((row) => row.map((cell) => (
+            this.inlineText(cell.tokens as InlineToken[]).replace(/\s+/g, ' ').trim()
+          )));
           const tableText = renderTable(rows, context.columns);
           push(`${paint(tableText, context.theme.terminal.foreground ?? '#c0caf5')}\n\n`);
           break;
@@ -114,7 +117,7 @@ export class TerminalMarkdownRenderer {
         }
         case 'html': {
           const html = token as Tokens.HTML;
-          const text = sanitizeTerminalText(html.text.replace(/<[^>]*>/g, '')).trim();
+          const text = emojify(sanitizeTerminalText(html.text.replace(/<[^>]*>/g, ''))).trim();
           if (text) push(`${paint(text, context.theme.markdown.muted)}\n\n`);
           break;
         }
@@ -170,7 +173,7 @@ export class TerminalMarkdownRenderer {
           chunks.push({ type: 'ansi', value: '\n' });
           break;
         default:
-          chunks.push({ type: 'ansi', value: text });
+          chunks.push({ type: 'ansi', value: emojify(text) });
       }
     }
     return chunks;
@@ -178,7 +181,9 @@ export class TerminalMarkdownRenderer {
 
   private inlineText(tokens: InlineToken[]): string {
     return sanitizeTerminalText(tokens.map((token) => {
-      return token.tokens ? this.inlineText(token.tokens) : token.text ?? token.raw ?? '';
+      if (token.tokens) return this.inlineText(token.tokens);
+      const text = token.text ?? token.raw ?? '';
+      return token.type === 'codespan' ? text : emojify(text);
     }).join(''));
   }
 
@@ -186,7 +191,8 @@ export class TerminalMarkdownRenderer {
     return tokens.map((token) => {
       if ('tokens' in token && Array.isArray(token.tokens)) return this.tokensToPlain(token.tokens as Token[]);
       if ('items' in token && Array.isArray(token.items)) return token.items.map((item) => this.tokensToPlain(item.tokens)).join('\n');
-      return 'text' in token && typeof token.text === 'string' ? token.text : '';
+      if (!('text' in token) || typeof token.text !== 'string') return '';
+      return token.type === 'codespan' || token.type === 'code' ? token.text : emojify(token.text);
     }).join('\n');
   }
 
