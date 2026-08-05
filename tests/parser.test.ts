@@ -29,8 +29,8 @@ describe('parseCommandLine', () => {
       isCommand: false,
       commandName: 'cat',
     });
-    expect(findCompletionTarget("cat '/posts/my notes/'")).toMatchObject({
-      fragment: '/posts/my notes/',
+    expect(findCompletionTarget("cat '/post/my notes/'")).toMatchObject({
+      fragment: '/post/my notes/',
       prefix: 'cat ',
       commandName: 'cat',
     });

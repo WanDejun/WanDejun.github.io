@@ -4,7 +4,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { ImageAddon } from '@xterm/addon-image';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { config, loadTheme, theme as initialTheme, themeNames } from '../config';
+import { config, loadTheme, theme as defaultTheme, themeNames } from '../config';
+import { BLOG_NOT_FOUND, resolveStartupRequest } from '../startupRequest';
 import {
   applyCompletionSuggestion, layoutCompletions, moveCompletionColumn, moveCompletionIndex,
 } from './completionPager';
@@ -13,6 +14,7 @@ import { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText, terminalLines } from '../shell/ansi';
 import { formatColumnRow, terminalCellWidth } from '../shell/columnLayout';
 import { createRegistry } from '../shell/createRegistry';
+import { quoteShellWord } from '../shell/parser';
 import { Shell } from '../shell/Shell';
 import type { CompletionSuggestion } from '../shell/types';
 import type { AppTheme, OutputChunk } from '../types';
@@ -191,23 +193,35 @@ async function writeDiagram(
 export function TerminalWindow() {
   const hostRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
-  const [activeTheme, setActiveTheme] = useState(initialTheme);
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null);
-  const shell = useMemo(() => {
+  const startup = useMemo(() => {
     const registry = createRegistry();
-    return new Shell(
-      new VirtualFileSystem(buildManifest(), registry.names()),
-      registry,
-      initialTheme,
+    const fs = new VirtualFileSystem(buildManifest(), registry.names());
+    const request = resolveStartupRequest(
+      window.location.search,
+      fs,
       config.terminal.theme,
       themeNames,
     );
+    const palette = request.themeName === config.terminal.theme
+      ? defaultTheme
+      : loadTheme(request.themeName);
+    const shell = new Shell(
+      fs,
+      registry,
+      palette,
+      request.themeName,
+      themeNames,
+    );
+    return { palette, request, shell };
   }, []);
+  const [activeTheme, setActiveTheme] = useState(startup.palette);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    let currentTheme = initialTheme;
+    const { request, shell } = startup;
+    let currentTheme = startup.palette;
 
     const terminal = new Terminal({
       allowProposedApi: true,
@@ -388,18 +402,25 @@ export function TerminalWindow() {
         }
         else if (chunk.type === 'clear') await xtermWrite(terminal, '\x1b[2J\x1b[H');
         else if (chunk.type === 'reset') {
-          shell.reset();
           historyIndex = -1;
-          await renderWelcome(controller);
+          await renderStartup(controller);
         }
       }
     }
 
-    async function renderWelcome(controller: AbortController): Promise<void> {
+    async function renderStartup(controller: AbortController): Promise<void> {
       await xtermWrite(terminal, '\x1b[2J\x1b[H');
-      // Equivalent to a bashrc command: startup and `exit` both run the public render path.
-      const welcome = await shell.execute('render /welcome.md', controller.signal, terminal.cols);
-      await renderChunks(welcome.chunks, controller);
+      shell.reset();
+      if (request.blog.type === 'not-found') {
+        await xtermWrite(terminal, terminalLines(`${BLOG_NOT_FOUND}\n`));
+        return;
+      }
+
+      const path = request.blog.type === 'found' ? request.blog.path : '/welcome.md';
+      if (request.blog.type === 'found') shell.cwd = request.blog.cwd;
+      // Equivalent to a bashrc command: startup and `exit` both use the public render path.
+      const startupResult = await shell.execute(`render ${quoteShellWord(path)}`, controller.signal, terminal.cols);
+      await renderChunks(startupResult.chunks, controller);
     }
 
     const submit = async () => {
@@ -501,7 +522,7 @@ export function TerminalWindow() {
     const startupController = new AbortController();
     activeController = startupController;
     busy = true;
-    void renderWelcome(startupController)
+    void renderStartup(startupController)
       .catch((exception) => {
         if (!startupController.signal.aborted) {
           terminal.write(terminalLines(paint(`${(exception as Error).message}\n`, currentTheme.markdown.error)));
@@ -524,7 +545,7 @@ export function TerminalWindow() {
       terminal.dispose();
       terminalRef.current = null;
     };
-  }, [shell]);
+  }, [startup]);
 
   const variables = {
     colorScheme: activeTheme.colorScheme,

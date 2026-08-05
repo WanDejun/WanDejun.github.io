@@ -66,9 +66,9 @@ describe('completion pager', () => {
       line: "cat 'draft post.md' ",
       cursor: 20,
     });
-    expect(applyCompletionSuggestion('cd ', '', { value: 'posts/', kind: 'directory' })).toEqual({
-      line: 'cd posts/',
-      cursor: 9,
+    expect(applyCompletionSuggestion('cd ', '', { value: 'post/', kind: 'directory' })).toEqual({
+      line: 'cd post/',
+      cursor: 8,
     });
     expect(applyCompletionSuggestion('cat ', ' | wc', { value: 'post.md', kind: 'file' })).toEqual({
       line: 'cat post.md | wc',

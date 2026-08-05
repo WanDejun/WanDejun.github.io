@@ -25,11 +25,18 @@ const contentText = { ...typedContentText, ...extensionlessContentText };
 
 const encoder = new TextEncoder();
 
+function virtualPath(sourcePath: string): string {
+  const contentPath = sourcePath.replace(/^\/content/, '') || '/';
+  // The repository groups articles under content/posts, while the public shell
+  // uses the shorter singular /post path used by shareable blog URLs.
+  return contentPath.replace(/^\/posts(?=\/|$)/, '/post');
+}
+
 export function buildManifest(): ManifestFile[] {
   return Object.entries(contentUrls).map(([sourcePath, url]) => {
     const text = contentText[sourcePath];
     return {
-      path: sourcePath.replace(/^\/content/, '') || '/',
+      path: virtualPath(sourcePath),
       ...(text === undefined ? { url } : { content: text, url }),
       size: text === undefined ? 0 : encoder.encode(text).byteLength,
       mime: mimeForPath(sourcePath, text === undefined ? 'application/octet-stream' : 'text/plain'),

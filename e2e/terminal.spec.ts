@@ -10,8 +10,8 @@ async function runCommand(page: import('@playwright/test').Page, command: string
   await input.press('Enter');
 }
 
-async function waitForTerminalReady(page: import('@playwright/test').Page) {
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('neko:/$');
+async function waitForTerminalReady(page: import('@playwright/test').Page, cwd = '/') {
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText(`neko:${cwd}$`, { timeout: 30_000 });
 }
 
 async function suppressExampleImage(page: import('@playwright/test').Page) {
@@ -71,25 +71,64 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
 
   await runCommand(page, 'ls /');
   const terminal = page.locator('.xterm-accessibility-tree');
-  await expect(terminal).toContainText('posts/');
+  await expect(terminal).toContainText('post/');
   await expect(terminal).toContainText('project/');
   await expect(terminal).toContainText('slide/');
 
-  await runCommand(page, 'cd /posts');
+  await runCommand(page, 'cd /post');
   await runCommand(page, 'pwd');
-  await expect(terminal).toContainText('/posts');
+  await expect(terminal).toContainText('/post');
 
   await runCommand(page, 'help');
   await expect(terminal).toContainText('standalone slide directories', { timeout: 15_000 });
 });
 
+test('opens a shared post with its requested theme and starts in its directory', async ({ page }) => {
+  await suppressExampleImage(page);
+  await page.goto('/?blog=%2Fpost%2Fhello-terminal.md&theme=gruvbox-light');
+  await waitForTerminalReady(page, '/post');
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('This flowchart is rendered by Mermaid.');
+  await expect.poll(() => page.locator('.page').evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgb(242, 229, 188)');
+  await runCommand(page, 'pwd');
+  await expect(terminal).toContainText('/post');
+  await runCommand(page, 'theme');
+  await expect(terminal).toContainText('* gruvbox-light');
+});
+
+test('shows a terminal 404 and stays at root for a missing shared post', async ({ page }) => {
+  await page.goto('/?blog=%2Fpost%2Fmissing.md');
+  await waitForTerminalReady(page);
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText(' _  _    ___  _  _');
+  await expect(terminal).toContainText('   |_|  \\___/   |_|');
+  await runCommand(page, 'pwd');
+  await expect(terminal).toContainText('/');
+});
+
+test('falls back to the configured theme for an invalid theme parameter', async ({ page }) => {
+  await page.goto('/?theme=missing');
+  await waitForTerminalReady(page);
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect.poll(() => page.locator('.page').evaluate((element) => (
+    getComputedStyle(element).backgroundColor
+  ))).toBe('rgb(22, 22, 30)');
+  await runCommand(page, 'theme');
+  await expect(terminal).toContainText('* tokyonight-night');
+});
+
 test('selects path completions with Tab and arrow keys before executing', async ({ page }) => {
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'cd /posts');
+  await runCommand(page, 'cd /post');
   const terminal = page.locator('.xterm-accessibility-tree');
   const input = page.locator('.xterm-helper-textarea');
-  await expect(terminal).toContainText('neko:/posts$');
+  await expect(terminal).toContainText('neko:/post$');
 
   await input.focus();
   await input.pressSequentially('cat ');
@@ -117,7 +156,7 @@ test('selects path completions with Tab and arrow keys before executing', async 
 test('switches themes without resetting the shell session', async ({ page }) => {
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'cd /posts');
+  await runCommand(page, 'cd /post');
   const terminal = page.locator('.xterm-accessibility-tree');
   const input = page.locator('.xterm-helper-textarea');
   await input.focus();
@@ -132,7 +171,7 @@ test('switches themes without resetting the shell session', async ({ page }) => 
   ))).toBe('rgb(242, 229, 188)');
 
   await runCommand(page, 'pwd');
-  await expect(terminal).toContainText('/posts');
+  await expect(terminal).toContainText('/post');
 });
 
 test('opens a static slide and transfers keyboard focus into it', async ({ page }) => {
@@ -175,7 +214,7 @@ test('renders a MathJax formula through the iTerm2 image layer', async ({ page }
   await page.route('**/src/markdown/renderDiagram.ts*', (route) => route.abort());
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'render /posts/hello-terminal.md');
+  await runCommand(page, 'render /post/hello-terminal.md');
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('formula unavailable');
   await expectOpaqueImageLayer(page);
@@ -187,7 +226,7 @@ test('renders a Mermaid diagram through the iTerm2 image layer', async ({ page }
   await page.route('**/src/markdown/renderFormula.ts*', (route) => route.abort());
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'render /posts/hello-terminal.md');
+  await runCommand(page, 'render /post/hello-terminal.md');
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
   await expectOpaqueImageLayer(page);
@@ -203,7 +242,7 @@ test('renders Markdown Emoji and bundled Nerd Font glyphs', async ({ page }) => 
   expect(emoji.opaque).toBeGreaterThan(100);
   expect(emoji.colors).toBeGreaterThan(5);
 
-  await runCommand(page, 'render /posts/zz-emoji.md');
+  await runCommand(page, 'render /post/zz-emoji.md');
   const terminal = page.locator('.xterm-accessibility-tree');
   await expect(terminal).toContainText('Markdown shortcodes become Emoji: 🚀 ✨ 😺', { timeout: 30_000 });
   await expect(terminal).toContainText('Powerline glyphs: \ue0b0 \ue0b2');

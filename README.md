@@ -25,8 +25,12 @@ npm run build
 - Add standalone HTML presentations under `content/slide/NAME/index.html`.
   These directories are copied unchanged so local CSS, JavaScript, and image
   paths continue to work. Open them with `render /slide/NAME/index.html`.
-- Everything under `content/` mirrors the virtual root. For example,
-  `content/posts/example.md` becomes `/posts/example.md`.
+- Content is exposed through the virtual filesystem. Most directories retain
+  their names; `content/posts/example.md` becomes `/post/example.md`.
+- Share a rendered post with `?blog=/post/example.md`. Valid links start in the
+  post's directory; missing posts show a terminal 404 and start at `/`.
+- Select a startup palette with `?theme=gruvbox-light`. Unknown theme names
+  fall back to the `terminal.theme` value in `config.toml`.
 - Edit the prompt, terminal sizing, active theme, and image limits in
   `config.toml`.
 - Add or edit color palettes in `src/themes/`; the active palette is selected by

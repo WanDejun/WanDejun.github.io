@@ -13,7 +13,7 @@ Welcome to a personal homepage that behaves like a small, read-only Linux shell.
 
 | Command | Purpose |
 | --- | --- |
-| `tree /posts` | Browse the archive |
+| `tree /post` | Browse the archive |
 | `grep pattern file` | Search a post |
 | `render file.md` | Read the rendered version |
 
@@ -21,7 +21,7 @@ Welcome to a personal homepage that behaves like a small, read-only Linux shell.
 
 ```typescript
 const prompt = (cwd: string) => `neko:${cwd}$ `;
-console.log(prompt('/posts'));
+console.log(prompt('/post'));
 ```
 
 Try `cat` on this file to compare the raw Markdown with this rendered view.

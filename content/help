@@ -4,12 +4,17 @@ This is a read-only Linux-inspired shell for exploring the site.
 
 GETTING STARTED
   ls /                  List the virtual root
-  tree /posts           Browse every post
-  cd /posts             Change the working directory
+  tree /post            Browse every post
+  cd /post              Change the working directory
   cat path/to/post.md   Read Markdown source
   render path/to/post.md  Render Markdown, formulas, diagrams, and images
   render /slide/example/index.html  Open an HTML slide in a floating window
   theme gruvbox-light  Switch the terminal and page color palette
+
+SHARING
+  Add ?blog=/post/name.md to the site URL to render that post on startup.
+  Add ?theme=gruvbox-light to select a theme; invalid names use the default.
+  Parameters can be combined: ?blog=/post/name.md&theme=gruvbox-light
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.
@@ -23,10 +28,10 @@ COMMANDS
   sort      tail   theme   tr      tree     uniq     wc      which
 
 EXAMPLES
-  find /posts -type f -name '*.md'
-  grep -in terminal /posts/**/*.md | head -n 5
-  cat /posts/hello-terminal.md
-  render /posts/hello-terminal.md
+  find /post -type f -name '*.md'
+  grep -in terminal /post/**/*.md | head -n 5
+  cat /post/hello-terminal.md
+  render /post/hello-terminal.md
   render /slide/example/index.html
   theme tokyonight-day
   printf '%s\n' alpha beta beta | sort | uniq -c

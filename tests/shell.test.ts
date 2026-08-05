@@ -13,9 +13,9 @@ beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
-    { path: '/posts/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
-    { path: '/posts/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
-    { path: '/posts/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
+    { path: '/post/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n\nEmoji :rocket: and 😺; code `:rocket:`.\n', size: 138, mime: 'text/markdown', url: '/post.md' },
+    { path: '/post/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
+    { path: '/post/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
     { path: '/project/page.html', content: '<h1>Project</h1>', size: 16, mime: 'text/html' },
     { path: '/slide/example/index.html', content: '<h1>Slides</h1>', size: 15, mime: 'text/html' },
   ], registry.names());
@@ -30,17 +30,17 @@ describe('Shell', () => {
   });
 
   it('changes cwd and runs text pipelines', async () => {
-    await shell.execute('cd /posts', controller());
-    expect(shell.cwd).toBe('/posts');
+    await shell.execute('cd /post', controller());
+    expect(shell.cwd).toBe('/post');
     const result = await shell.execute(`printf '%s\\n' beta alpha beta | sort | uniq -c`, controller());
     expect(result.chunks).toEqual([{ type: 'text', value: '      1 alpha\n      2 beta\n' }]);
   });
 
   it('finds Markdown through a quoted glob expression', async () => {
-    const result = await shell.execute(`find /posts -type f -name '*.md'`, controller());
+    const result = await shell.execute(`find /post -type f -name '*.md'`, controller());
     expect(result.chunks).toEqual([{
       type: 'text',
-      value: '/posts/my notes/draft post.md\n/posts/post.md\n',
+      value: '/post/my notes/draft post.md\n/post/post.md\n',
     }]);
   });
 
@@ -51,7 +51,7 @@ describe('Shell', () => {
       suggestions: [{ value: 'render', kind: 'command' }],
     });
 
-    await shell.execute('cd /posts', controller());
+    await shell.execute('cd /post', controller());
     expect(shell.complete('cat p')).toEqual({
       prefix: 'cat ',
       suffix: '',
@@ -66,10 +66,10 @@ describe('Shell', () => {
       suffix: ' | wc',
       suggestions: [{ value: 'post.md', kind: 'file' }],
     });
-    expect(shell.complete("cat '/posts/my notes/'")).toEqual({
+    expect(shell.complete("cat '/post/my notes/'")).toEqual({
       prefix: 'cat ',
       suffix: '',
-      suggestions: [{ value: '/posts/my notes/draft post.md', kind: 'file' }],
+      suggestions: [{ value: '/post/my notes/draft post.md', kind: 'file' }],
     });
 
     expect(shell.complete('ls ')).toEqual({ prefix: 'ls ', suffix: '', suggestions: [] });
@@ -152,11 +152,11 @@ describe('Shell', () => {
   });
 
   it('keeps cat raw and lets render emit formula, diagram, and image chunks', async () => {
-    const cat = await shell.execute('cat /posts/post.md', controller());
+    const cat = await shell.execute('cat /post/post.md', controller());
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining('![Photo]') });
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining(':rocket:') });
 
-    const rendered = await shell.execute('render /posts/post.md', controller());
+    const rendered = await shell.execute('render /post/post.md', controller());
     expect(rendered.chunks).toContainEqual({ type: 'formula', source: 'E = mc^2', display: true });
     expect(rendered.chunks).toContainEqual({ type: 'diagram', source: 'flowchart LR\n  A --> B' });
     expect(rendered.chunks.some((chunk) => chunk.type === 'image' && chunk.source === '/photo.png')).toBe(true);
@@ -183,9 +183,9 @@ describe('Shell', () => {
     for (const command of [
       'render',
       'render /help',
-      'render /posts/post.md /posts/post.md',
-      'render /posts/post.md | grep Post',
-      'cat /posts/post.md | render /posts/post.md',
+      'render /post/post.md /post/post.md',
+      'render /post/post.md | grep Post',
+      'cat /post/post.md | render /post/post.md',
     ]) {
       const result = await shell.execute(command, controller());
       expect(result.exitCode).toBe(2);
