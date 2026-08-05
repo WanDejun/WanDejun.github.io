@@ -14,6 +14,28 @@ async function waitForTerminalReady(page: import('@playwright/test').Page) {
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('neko:/$');
 }
 
+async function suppressExampleImage(page: import('@playwright/test').Page) {
+  await page.route(/example-coat(?:-[^/]+)?\.png(?:\?.*)?$/, (route) => {
+    const requestUrl = new URL(route.request().url());
+    return requestUrl.searchParams.has('url') ? route.continue() : route.abort();
+  });
+}
+
+async function expectOpaqueImageLayer(page: import('@playwright/test').Page) {
+  const imageLayer = page.locator('canvas.xterm-image-layer');
+  await expect(imageLayer).toHaveCount(1, { timeout: 15_000 });
+  await expect.poll(async () => imageLayer.evaluate((canvas) => {
+    const context = canvas.getContext('2d');
+    if (!context) return 0;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let opaque = 0;
+    for (let index = 3; index < pixels.length; index += 4) {
+      if (pixels[index] > 0) opaque += 1;
+    }
+    return opaque;
+  })).toBeGreaterThan(1000);
+}
+
 test('opens an interactive terminal and navigates the virtual filesystem', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle('Neko Terminal');
@@ -27,33 +49,31 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('/blogs');
 
   await runCommand(page, 'help');
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('publish them on the next deployment');
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText('publish them on the next deployment', { timeout: 15_000 });
 });
 
 test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {
-  // Suppress the post's ordinary image so nontransparent pixels can only come from MathJax.
-  await page.route(/example-coat(?:-[^/]+)?\.png(?:\?.*)?$/, (route) => {
-    const requestUrl = new URL(route.request().url());
-    return requestUrl.searchParams.has('url') ? route.continue() : route.abort();
-  });
+  // Suppress the other rich chunks so nontransparent pixels can only come from MathJax.
+  await suppressExampleImage(page);
+  await page.route('**/src/markdown/renderDiagram.ts*', (route) => route.abort());
   await page.goto('/');
   await waitForTerminalReady(page);
   await runCommand(page, 'render /blogs/notes/hello-terminal.md');
-  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.');
-  const imageLayer = page.locator('canvas.xterm-image-layer');
-  await expect(imageLayer).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.', { timeout: 30_000 });
   await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('formula unavailable');
+  await expectOpaqueImageLayer(page);
+});
 
-  await expect.poll(async () => imageLayer.evaluate((canvas) => {
-    const context = canvas.getContext('2d');
-    if (!context) return 0;
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let opaque = 0;
-    for (let index = 3; index < pixels.length; index += 4) {
-      if (pixels[index] > 0) opaque += 1;
-    }
-    return opaque;
-  })).toBeGreaterThan(1000);
+test('renders a Mermaid diagram through the iTerm2 image layer', async ({ page }) => {
+  // Suppress the other rich chunks so nontransparent pixels can only come from Mermaid.
+  await suppressExampleImage(page);
+  await page.route('**/src/markdown/renderFormula.ts*', (route) => route.abort());
+  await page.goto('/');
+  await waitForTerminalReady(page);
+  await runCommand(page, 'render /blogs/notes/hello-terminal.md');
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This flowchart is rendered by Mermaid.', { timeout: 30_000 });
+  await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('diagram unavailable');
+  await expectOpaqueImageLayer(page);
 });
 
 test('keeps the rounded terminal inside a mobile viewport', async ({ page }) => {

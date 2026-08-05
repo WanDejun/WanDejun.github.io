@@ -42,3 +42,15 @@ $$
 $$
 
 This identity is rendered by MathJax.
+
+## A Mermaid diagram
+
+Fenced code blocks marked as `mermaid` become terminal image chunks too.
+
+```mermaid
+flowchart LR
+  Markdown --> Render
+  Render --> Xterm[xterm.js]
+```
+
+This flowchart is rendered by Mermaid.

@@ -12,7 +12,7 @@ beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
     { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
-    { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n![Photo](./photo.png)\n', size: 51, mime: 'text/markdown', url: '/post.md' },
+    { path: '/blogs/notes/post.md', content: '# Post\n\n$$\nE = mc^2\n$$\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n![Photo](./photo.png)\n', size: 91, mime: 'text/markdown', url: '/post.md' },
     { path: '/blogs/notes/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
   ], registry.names());
   shell = new Shell(fs, registry, theme);
@@ -53,12 +53,13 @@ describe('Shell', () => {
     expect((piped.chunks[0] as { value: string }).value).not.toContain('\x1b');
   });
 
-  it('keeps cat raw and lets render emit formula and image chunks', async () => {
+  it('keeps cat raw and lets render emit formula, diagram, and image chunks', async () => {
     const cat = await shell.execute('cat /blogs/notes/post.md', controller());
     expect(cat.chunks[0]).toMatchObject({ type: 'text', value: expect.stringContaining('![Photo]') });
 
     const rendered = await shell.execute('render /blogs/notes/post.md', controller());
     expect(rendered.chunks).toContainEqual({ type: 'formula', source: 'E = mc^2', display: true });
+    expect(rendered.chunks).toContainEqual({ type: 'diagram', source: 'flowchart LR\n  A --> B' });
     expect(rendered.chunks.some((chunk) => chunk.type === 'image' && chunk.source === '/photo.png')).toBe(true);
   });
 

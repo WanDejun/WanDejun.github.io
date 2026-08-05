@@ -23,8 +23,7 @@ export const renderCommand: Command = {
     try {
       const source = context.fs.readText(path, context.cwd);
       const sourcePath = context.fs.normalize(path, context.cwd);
-      const rendered = renderer.render(source, sourcePath, context);
-      return { stdout: rendered.plainText, chunks: rendered.chunks };
+      return { stdout: '', chunks: renderer.render(source, sourcePath, context) };
     } catch (exception) {
       return { stdout: '', stderr: error('render', (exception as Error).message), exitCode: 1 };
     }

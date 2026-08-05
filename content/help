@@ -7,7 +7,7 @@ GETTING STARTED
   tree /blogs           Browse every post
   cd /blogs             Change the working directory
   cat path/to/post.md   Read Markdown source
-  render path/to/post.md  Render Markdown, formulas, and images
+  render path/to/post.md  Render Markdown, formulas, diagrams, and images
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.

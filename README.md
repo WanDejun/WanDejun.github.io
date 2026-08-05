@@ -30,8 +30,9 @@ npm run build
   `terminal.theme` in `config.toml`.
 
 Use `cat` to read Markdown source and `render FILE.md` to render terminal-formatted
-Markdown with MathJax formula blocks and local or HTTPS images. `render` accepts
-one `.md` file and is intentionally unavailable in pipelines.
+Markdown with MathJax formula blocks, Mermaid fenced code blocks, and local or
+HTTPS images. `render` accepts one `.md` file and is intentionally unavailable
+in pipelines.
 
 ## Deployment
 

@@ -98,7 +98,7 @@ async function svgToPng(svg: string): Promise<Uint8Array> {
     const image = new Image();
     image.src = url;
     await image.decode();
-    if (!image.naturalWidth || !image.naturalHeight) throw new Error('formula SVG has no dimensions');
+    if (!image.naturalWidth || !image.naturalHeight) throw new Error('generated SVG has no dimensions');
 
     // A modest scale keeps TeX strokes crisp without changing terminal-cell sizing excessively.
     const scale = Math.min(1.5, 4096 / image.naturalWidth, 4096 / image.naturalHeight);
@@ -109,11 +109,31 @@ async function svgToPng(svg: string): Promise<Uint8Array> {
     if (!context) throw new Error('canvas rendering is unavailable');
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('failed to encode formula image')), 'image/png');
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('failed to encode generated image')), 'image/png');
     });
     return new Uint8Array(await blob.arrayBuffer());
   } finally {
     URL.revokeObjectURL(url);
+  }
+}
+
+async function writeGeneratedImage(
+  terminal: Terminal,
+  signal: AbortSignal,
+  kind: 'formula' | 'diagram',
+  createSvg: () => Promise<string>,
+): Promise<void> {
+  try {
+    const svg = await createSvg();
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    const bytes = await svgToPng(svg);
+    if (bytes.byteLength > config.images.maxBytes) throw new Error(`${kind} image exceeds configured size limit`);
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    await writeInlineImage(terminal, bytes, 'image/png', `${kind}.png`);
+  } catch (exception) {
+    if (signal.aborted) throw exception;
+    const reason = sanitizeTerminalText(exception instanceof Error ? exception.message : String(exception));
+    await xtermWrite(terminal, terminalLines(paint(`[${kind} unavailable: ${reason}]\n`, theme.markdown.error)));
   }
 }
 
@@ -122,20 +142,30 @@ async function writeFormula(
   chunk: Extract<OutputChunk, { type: 'formula' }>,
   signal: AbortSignal,
 ): Promise<void> {
-  try {
+  return writeGeneratedImage(terminal, signal, 'formula', async () => {
     // MathJax is a separate bundle and is loaded only when rendered Markdown contains TeX.
     const { formulaToSvg } = await import('../markdown/renderFormula');
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const svg = formulaToSvg(chunk.source, chunk.display, theme.terminal.foreground ?? '#c0caf5');
-    const bytes = await svgToPng(svg);
-    if (bytes.byteLength > config.images.maxBytes) throw new Error('formula image exceeds configured size limit');
-    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    await writeInlineImage(terminal, bytes, 'image/png', 'formula.png');
-  } catch (exception) {
-    if (signal.aborted) throw exception;
-    const reason = sanitizeTerminalText(exception instanceof Error ? exception.message : String(exception));
-    await xtermWrite(terminal, terminalLines(paint(`[formula unavailable: ${reason}]\n`, theme.markdown.error)));
-  }
+    return formulaToSvg(chunk.source, chunk.display, theme.terminal.foreground ?? '#c0caf5');
+  });
+}
+
+async function writeDiagram(
+  terminal: Terminal,
+  chunk: Extract<OutputChunk, { type: 'diagram' }>,
+  signal: AbortSignal,
+): Promise<void> {
+  return writeGeneratedImage(terminal, signal, 'diagram', async () => {
+    // Mermaid is intentionally lazy because its parsers and layout engines are sizeable.
+    const { diagramToSvg } = await import('../markdown/renderDiagram');
+    return diagramToSvg(chunk.source, {
+      background: theme.page.panel,
+      foreground: theme.terminal.foreground ?? '#c0caf5',
+      primary: theme.markdown.heading,
+      secondary: theme.markdown.code,
+      border: theme.markdown.border,
+      line: theme.markdown.muted,
+    });
+  });
 }
 
 export function TerminalWindow() {
@@ -199,6 +229,7 @@ export function TerminalWindow() {
         else if (chunk.type === 'ansi') await xtermWrite(terminal, terminalLines(chunk.value));
         else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal);
         else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal);
+        else if (chunk.type === 'diagram') await writeDiagram(terminal, chunk, controller.signal);
         else if (chunk.type === 'clear') await xtermWrite(terminal, '\x1b[2J\x1b[H');
         else if (chunk.type === 'reset') {
           shell.reset();

@@ -60,6 +60,7 @@ export type OutputChunk =
   | { type: 'ansi'; value: string }
   | { type: 'image'; source: string; alt: string; name: string }
   | { type: 'formula'; source: string; display: boolean }
+  | { type: 'diagram'; source: string }
   | { type: 'clear' }
   | { type: 'reset' };
 
