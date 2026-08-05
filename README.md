@@ -29,8 +29,9 @@ npm run build
 - Add or edit color palettes in `src/themes/`; the active palette is selected by
   `terminal.theme` in `config.toml`.
 
-Use `cat` to read Markdown source and `glow` to render terminal-formatted
-Markdown with local or HTTPS images.
+Use `cat` to read Markdown source and `render FILE.md` to render terminal-formatted
+Markdown with MathJax formula blocks and local or HTTPS images. `render` accepts
+one `.md` file and is intentionally unavailable in pipelines.
 
 ## Deployment
 

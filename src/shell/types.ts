@@ -6,6 +6,7 @@ export interface CommandContext {
   cwd: string;
   columns: number;
   isFinal: boolean;
+  isStandalone: boolean;
   signal: AbortSignal;
   theme: AppTheme;
   setCwd(path: string): void;

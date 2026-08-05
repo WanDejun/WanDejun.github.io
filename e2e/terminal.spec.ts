@@ -2,8 +2,11 @@ import { expect, test } from '@playwright/test';
 
 async function runCommand(page: import('@playwright/test').Page, command: string) {
   const input = page.locator('.xterm-helper-textarea');
+  const terminal = page.locator('.xterm-accessibility-tree');
   await input.focus();
   await input.pressSequentially(command);
+  // xterm forwards key events through an async input queue; wait for the tail before Enter.
+  await expect(terminal).toContainText(command.slice(-12));
   await input.press('Enter');
 }
 
@@ -27,12 +30,19 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
   await expect(page.locator('.xterm-accessibility-tree')).toContainText('publish them on the next deployment');
 });
 
-test('renders Markdown and a local iTerm2 image', async ({ page }) => {
+test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {
+  // Suppress the post's ordinary image so nontransparent pixels can only come from MathJax.
+  await page.route(/example-coat(?:-[^/]+)?\.png(?:\?.*)?$/, (route) => {
+    const requestUrl = new URL(route.request().url());
+    return requestUrl.searchParams.has('url') ? route.continue() : route.abort();
+  });
   await page.goto('/');
   await waitForTerminalReady(page);
-  await runCommand(page, 'glow /blogs/notes/hello-terminal.md');
+  await runCommand(page, 'render /blogs/notes/hello-terminal.md');
+  await expect(page.locator('.xterm-accessibility-tree')).toContainText('This identity is rendered by MathJax.');
   const imageLayer = page.locator('canvas.xterm-image-layer');
-  await expect(imageLayer).toHaveCount(1);
+  await expect(imageLayer).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('.xterm-accessibility-tree')).not.toContainText('formula unavailable');
 
   await expect.poll(async () => imageLayer.evaluate((canvas) => {
     const context = canvas.getContext('2d');

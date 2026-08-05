@@ -49,6 +49,18 @@ async function imageCellSize(terminal: Terminal, bytes: Uint8Array, mime: string
   return { width, height };
 }
 
+async function writeInlineImage(
+  terminal: Terminal,
+  bytes: Uint8Array,
+  mime: string,
+  name: string,
+): Promise<void> {
+  const dimensions = await imageCellSize(terminal, bytes, mime);
+  // ImageAddon consumes the iTerm2 OSC 1337 sequence written into xterm itself.
+  const sequence = `\x1b]1337;File=name=${utf8ToBase64(name)};size=${bytes.byteLength};width=${dimensions.width};height=${dimensions.height};preserveAspectRatio=1;inline=1:${bytesToBase64(bytes)}\x07`;
+  await xtermWrite(terminal, sequence);
+}
+
 async function writeImage(
   terminal: Terminal,
   chunk: Extract<OutputChunk, { type: 'image' }>,
@@ -68,10 +80,7 @@ async function writeImage(
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > config.images.maxBytes) throw new Error('image exceeds configured size limit');
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const dimensions = await imageCellSize(terminal, bytes, mime);
-    // ImageAddon consumes the iTerm2 OSC 1337 sequence written into xterm itself.
-    const sequence = `\x1b]1337;File=name=${utf8ToBase64(chunk.name)};size=${bytes.byteLength};width=${dimensions.width};height=${dimensions.height};preserveAspectRatio=1;inline=1:${bytesToBase64(bytes)}\x07`;
-    await xtermWrite(terminal, sequence);
+    await writeInlineImage(terminal, bytes, mime, chunk.name);
   } catch (exception) {
     if (signal.aborted) throw exception;
     const reason = exception instanceof Error ? exception.message : String(exception);
@@ -80,6 +89,52 @@ async function writeImage(
   } finally {
     window.clearTimeout(timer);
     signal.removeEventListener('abort', abort);
+  }
+}
+
+async function svgToPng(svg: string): Promise<Uint8Array> {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    if (!image.naturalWidth || !image.naturalHeight) throw new Error('formula SVG has no dimensions');
+
+    // A modest scale keeps TeX strokes crisp without changing terminal-cell sizing excessively.
+    const scale = Math.min(1.5, 4096 / image.naturalWidth, 4096 / image.naturalHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.ceil(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.ceil(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('canvas rendering is unavailable');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('failed to encode formula image')), 'image/png');
+    });
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function writeFormula(
+  terminal: Terminal,
+  chunk: Extract<OutputChunk, { type: 'formula' }>,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    // MathJax is a separate bundle and is loaded only when rendered Markdown contains TeX.
+    const { formulaToSvg } = await import('../markdown/renderFormula');
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    const svg = formulaToSvg(chunk.source, chunk.display, theme.terminal.foreground ?? '#c0caf5');
+    const bytes = await svgToPng(svg);
+    if (bytes.byteLength > config.images.maxBytes) throw new Error('formula image exceeds configured size limit');
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    await writeInlineImage(terminal, bytes, 'image/png', 'formula.png');
+  } catch (exception) {
+    if (signal.aborted) throw exception;
+    const reason = sanitizeTerminalText(exception instanceof Error ? exception.message : String(exception));
+    await xtermWrite(terminal, terminalLines(paint(`[formula unavailable: ${reason}]\n`, theme.markdown.error)));
   }
 }
 
@@ -143,6 +198,7 @@ export function TerminalWindow() {
         if (chunk.type === 'text') await xtermWrite(terminal, terminalLines(sanitizeTerminalText(chunk.value)));
         else if (chunk.type === 'ansi') await xtermWrite(terminal, terminalLines(chunk.value));
         else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal);
+        else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal);
         else if (chunk.type === 'clear') await xtermWrite(terminal, '\x1b[2J\x1b[H');
         else if (chunk.type === 'reset') {
           shell.reset();
@@ -154,8 +210,8 @@ export function TerminalWindow() {
 
     async function renderWelcome(controller: AbortController): Promise<void> {
       await xtermWrite(terminal, '\x1b[2J\x1b[H');
-      // Equivalent to a bashrc command: startup and `exit` both run the public glow path.
-      const welcome = await shell.execute('glow /welcome.md', controller.signal, terminal.cols);
+      // Equivalent to a bashrc command: startup and `exit` both run the public render path.
+      const welcome = await shell.execute('render /welcome.md', controller.signal, terminal.cols);
       await renderChunks(welcome.chunks, controller);
     }
 

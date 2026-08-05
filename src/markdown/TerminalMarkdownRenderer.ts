@@ -5,13 +5,28 @@ import javascript from 'highlight.js/lib/languages/javascript';
 import json from 'highlight.js/lib/languages/json';
 import markdown from 'highlight.js/lib/languages/markdown';
 import typescript from 'highlight.js/lib/languages/typescript';
-import { Marked, type Token, type Tokens } from 'marked';
+import { Marked, type Token, type TokenizerExtension, type Tokens } from 'marked';
 import { basename, dirname } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText } from '../shell/ansi';
 import type { CommandContext } from '../shell/types';
 import type { OutputChunk } from '../types';
 
 type InlineToken = Tokens.Generic & { tokens?: InlineToken[]; text?: string; href?: string; raw?: string };
+type FormulaToken = Tokens.Generic & { type: 'formula'; text: string; display: true };
+
+const formulaExtension: TokenizerExtension = {
+  name: 'formula',
+  level: 'block',
+  start(source) {
+    return source.match(/^\$\$[ \t]*$/m)?.index;
+  },
+  tokenizer(source) {
+    // Requiring delimiters on their own lines avoids treating ordinary dollar signs as TeX.
+    const match = /^\$\$[ \t]*\n([\s\S]+?)\n\$\$(?:[ \t]*\n|[ \t]*$)/.exec(source);
+    if (!match) return undefined;
+    return { type: 'formula', raw: match[0], text: match[1].trim(), display: true };
+  },
+};
 
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('shell', bash);
@@ -30,7 +45,7 @@ export interface MarkdownRenderResult {
 }
 
 export class TerminalMarkdownRenderer {
-  private readonly marked = new Marked({ gfm: true, breaks: false });
+  private readonly marked = new Marked({ gfm: true, breaks: false }).use({ extensions: [formulaExtension] });
 
   render(source: string, sourcePath: string, context: CommandContext): MarkdownRenderResult {
     const tokens = this.marked.lexer(source);
@@ -85,6 +100,13 @@ export class TerminalMarkdownRenderer {
           push(`${paint(`─${label}${'─'.repeat(ruleLength)}`, context.theme.markdown.border)}\n`, `---${label}---\n`);
           const highlighted = this.highlight(code.text, code.lang, context);
           push(`${highlighted}\n${paint('─'.repeat(Math.min(context.columns - 1, 56)), context.theme.markdown.border)}\n\n`, `${code.text}\n---\n\n`);
+          break;
+        }
+        case 'formula': {
+          const formula = token as FormulaToken;
+          chunks.push({ type: 'formula', source: formula.text, display: formula.display });
+          chunks.push({ type: 'ansi', value: '\n\n' });
+          plain.push(`$$\n${formula.text}\n$$\n\n`);
           break;
         }
         case 'table': {
@@ -153,16 +175,11 @@ export class TerminalMarkdownRenderer {
             const message = `[image: ${alt}; ${resolved.error}; ${href}]`;
             chunks.push({ type: 'ansi', value: paint(message, context.theme.markdown.error) });
             plainText += message;
-          } else if (context.isFinal) {
-            // Images are terminal-only. A piped glow command emits the textual fallback below.
+          } else {
             chunks.push({ type: 'ansi', value: `\n${paint(`[image: ${alt}]`, context.theme.markdown.muted)}\n` });
             chunks.push({ type: 'image', source: resolved.source!, alt, name: basename(href) || 'image' });
             chunks.push({ type: 'ansi', value: '\n' });
             plainText += `[image: ${alt}; ${href}]`;
-          } else {
-            const fallback = `[image: ${alt}; ${href}]`;
-            chunks.push({ type: 'ansi', value: fallback });
-            plainText += fallback;
           }
           break;
         }

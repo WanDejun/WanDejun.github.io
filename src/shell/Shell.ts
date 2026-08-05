@@ -51,8 +51,9 @@ export class Shell {
         fs: this.fs,
         cwd: this.cwd,
         columns,
-        // Commands such as glow use this to replace images with text inside a pipe.
         isFinal: index === pipeline.length - 1,
+        // Rich renderers cannot safely exchange terminal-only chunks through stdout.
+        isStandalone: pipeline.length === 1,
         signal,
         theme: this.theme,
         setCwd: (path) => { this.cwd = path; },

@@ -59,6 +59,7 @@ export type OutputChunk =
   | { type: 'text'; value: string }
   | { type: 'ansi'; value: string }
   | { type: 'image'; source: string; alt: string; name: string }
+  | { type: 'formula'; source: string; display: boolean }
   | { type: 'clear' }
   | { type: 'reset' };
 

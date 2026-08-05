@@ -7,25 +7,25 @@ GETTING STARTED
   tree /blogs           Browse every post
   cd /blogs             Change the working directory
   cat path/to/post.md   Read Markdown source
-  glow path/to/post.md  Render Markdown and images in the terminal
+  render path/to/post.md  Render Markdown, formulas, and images
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.
+  render accepts one .md file and cannot be used in a pipeline.
   Use Up/Down for history, Tab for completion, and Ctrl+L to clear.
   Ctrl+C cancels the current line or a running command.
 
 COMMANDS
   basename  cat    cd      clear   cut      dirname  echo   exit
-  find      glow   grep    head    help     ls       nl     printf
+  find      grep   head    help    ls       nl       printf render
   pwd       sed    sort    tail    tr       tree     uniq   wc     which
 
 EXAMPLES
   find /blogs -type f -name '*.md'
   grep -in terminal /blogs/**/*.md | head -n 5
   cat /blogs/notes/hello-terminal.md
-  glow /blogs/notes/hello-terminal.md
+  render /blogs/notes/hello-terminal.md
   printf '%s\n' alpha beta beta | sort | uniq -c
 
 The filesystem is generated from this repository. Add Markdown and image
 files under blogs/ to publish them on the next deployment.
-

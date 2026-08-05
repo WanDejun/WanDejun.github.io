@@ -7,7 +7,7 @@ import {
   cutCommand, echoCommand, nlCommand, printfCommand, sedCommand, sortCommand,
   trCommand, uniqCommand, whichCommand,
 } from './commands/textCommands';
-import { glowCommand } from './commands/glowCommand';
+import { renderCommand } from './commands/renderCommand';
 import type { Command } from './types';
 
 const helpCommand: Command = {
@@ -24,9 +24,9 @@ export function createRegistry(): CommandRegistry {
   const registry = new CommandRegistry();
   [
     basenameCommand, catCommand, cdCommand, clearCommand, cutCommand, dirnameCommand,
-    echoCommand, exitCommand, findCommand, glowCommand, grepCommand, headCommand,
+    echoCommand, exitCommand, findCommand, grepCommand, headCommand,
     helpCommand, lsCommand, nlCommand, printfCommand, pwdCommand, sedCommand, sortCommand,
-    tailCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
+    renderCommand, tailCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
   ].forEach((command) => registry.register(command));
   return registry;
 }
