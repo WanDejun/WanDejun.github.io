@@ -3,6 +3,7 @@ import { theme } from '../src/config';
 import { VirtualFileSystem } from '../src/filesystem/VirtualFileSystem';
 import { createRegistry } from '../src/shell/createRegistry';
 import { ansi } from '../src/shell/ansi';
+import { terminalCellWidth } from '../src/shell/columnLayout';
 import { Shell } from '../src/shell/Shell';
 
 const controller = () => new AbortController().signal;
@@ -84,6 +85,33 @@ describe('Shell', () => {
     const piped = await shell.execute('ls /bin/cat | grep cat', controller());
     expect(piped.chunks).toEqual([{ type: 'text', value: 'cat\n' }]);
     expect((piped.chunks[0] as { value: string }).value).not.toContain('\x1b');
+  });
+
+  it('wraps short ls output into aligned terminal-width columns', async () => {
+    const narrow = await shell.execute('ls /bin | cat', controller(), 24);
+    expect(narrow.chunks).toHaveLength(1);
+    const output = narrow.chunks[0].type === 'text' ? narrow.chunks[0].value : '';
+    const lines = output.trimEnd().split('\n');
+    expect(lines.slice(0, 2)).toEqual(['basename  cat', 'cd        clear']);
+    expect(lines.length).toBeGreaterThan(2);
+    expect(lines.every((line) => terminalCellWidth(line) <= 23)).toBe(true);
+
+    const colored = await shell.execute('ls /bin', controller(), 24);
+    const coloredOutput = colored.chunks[0].type === 'ansi' ? colored.chunks[0].value : '';
+    expect(coloredOutput.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')).toBe(output);
+
+    const tiny = await shell.execute('ls /bin | cat', controller(), 5);
+    const tinyOutput = tiny.chunks[0].type === 'text' ? tiny.chunks[0].value : '';
+    expect(tinyOutput).toContain('basename\n');
+    expect(tinyOutput).not.toContain('…');
+  });
+
+  it('keeps long ls output line-oriented', async () => {
+    const result = await shell.execute('ls -l /bin | cat', controller(), 24);
+    const output = result.chunks[0].type === 'text' ? result.chunks[0].value : '';
+    const lines = output.trimEnd().split('\n');
+    expect(lines).toHaveLength(shell.registry.names().length);
+    expect(lines.every((line) => line.startsWith('-r-xr-xr-x'))).toBe(true);
   });
 
   it('keeps cat raw and lets render emit formula, diagram, and image chunks', async () => {

@@ -44,6 +44,14 @@ export function measureColumns(values: string[], availableColumns: number, gap =
   };
 }
 
+export function columnRows<T>(values: T[], columnCount: number): T[][] {
+  const count = Math.max(1, columnCount);
+  return Array.from(
+    { length: Math.ceil(values.length / count) },
+    (_, row) => values.slice(row * count, (row + 1) * count),
+  );
+}
+
 export function fitCell(value: string, width: number): { text: string; padding: string } {
   const available = Math.max(1, width);
   let text = value;
@@ -62,4 +70,16 @@ export function fitCell(value: string, width: number): { text: string; padding: 
     text,
     padding: ' '.repeat(Math.max(0, available - terminalCellWidth(text))),
   };
+}
+
+export function formatColumnRow<T>(
+  row: T[],
+  columnWidth: number,
+  valueFor: (item: T) => string,
+  render: (text: string, item: T) => string = (text) => text,
+): string {
+  return row.map((item, index) => {
+    const { text, padding } = fitCell(valueFor(item), columnWidth);
+    return `${render(text, item)}${index === row.length - 1 ? '' : padding}`;
+  }).join('');
 }

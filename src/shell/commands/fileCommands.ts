@@ -1,6 +1,7 @@
 import { basename as pathBasename, dirname as pathDirname } from '../../filesystem/VirtualFileSystem';
 import type { VirtualNode } from '../../filesystem/VirtualFileSystem';
 import { paint } from '../ansi';
+import { columnRows, formatColumnRow, measureColumns, terminalCellWidth } from '../columnLayout';
 import type { Command, CommandContext } from '../types';
 import { error, humanSize, mode, readSources, splitLines, wildcardMatch } from './utils';
 
@@ -16,6 +17,25 @@ function nodeName(node: VirtualNode): string {
 
 function coloredNodeName(node: VirtualNode, context: CommandContext): string {
   return paint(nodeName(node), nodeColor(node, context));
+}
+
+function columnarNodeNames(entries: VirtualNode[], context: CommandContext): { plain: string; colored: string } {
+  const names = entries.map(nodeName);
+  const metrics = measureColumns(names, Math.max(1, context.columns - 1));
+  // A single overlong name remains complete; truncation is appropriate for a picker, not for ls.
+  const columnWidth = metrics.columnCount === 1
+    ? Math.max(metrics.columnWidth, ...names.map(terminalCellWidth))
+    : metrics.columnWidth;
+  const rows = columnRows(entries, metrics.columnCount);
+  return {
+    plain: rows.map((row) => formatColumnRow(row, columnWidth, nodeName)).join('\n'),
+    colored: rows.map((row) => formatColumnRow(
+      row,
+      columnWidth,
+      nodeName,
+      (text, entry) => paint(text, nodeColor(entry, context)),
+    )).join('\n'),
+  };
 }
 
 export const catCommand: Command = {
@@ -64,8 +84,9 @@ export const lsCommand: Command = {
           blocks.push(`${heading}${entries.map((entry) => `${mode(entry)}  ${String(entry.size).padStart(8)} ${human ? humanSize(entry.size).padStart(6) : ''} ${nodeName(entry)}`.replace(/ +$/g, '')).join('\n')}`);
           coloredBlocks.push(`${coloredHeading}${entries.map((entry) => `${mode(entry)}  ${String(entry.size).padStart(8)} ${human ? humanSize(entry.size).padStart(6) : ''} ${coloredNodeName(entry, context)}`.replace(/ +$/g, '')).join('\n')}`);
         } else {
-          blocks.push(`${heading}${entries.map(nodeName).join('  ')}`);
-          coloredBlocks.push(`${coloredHeading}${entries.map((entry) => coloredNodeName(entry, context)).join('  ')}`);
+          const listing = columnarNodeNames(entries, context);
+          blocks.push(`${heading}${listing.plain}`);
+          coloredBlocks.push(`${coloredHeading}${listing.colored}`);
         }
       }
       const suffix = blocks.some(Boolean) ? '\n' : '';

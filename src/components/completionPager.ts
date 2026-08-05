@@ -1,5 +1,5 @@
 import type { CompletionSuggestion } from '../shell/types';
-import { measureColumns } from '../shell/columnLayout';
+import { columnRows, measureColumns } from '../shell/columnLayout';
 
 export interface CompletionLayout {
   rows: Array<Array<{ index: number; suggestion: CompletionSuggestion }>>;
@@ -30,9 +30,9 @@ export function layoutCompletions(
   const page = Math.min(pageCount - 1, Math.floor((selectedIndex ?? 0) / pageSize));
   const firstIndex = page * pageSize;
   const visible = suggestions.slice(firstIndex, firstIndex + pageSize);
-  const rows = Array.from({ length: Math.ceil(visible.length / columnCount) }, (_, row) => (
-    visible.slice(row * columnCount, (row + 1) * columnCount).map((suggestion, column) => ({
-      index: firstIndex + row * columnCount + column,
+  const rows = columnRows(visible, columnCount).map((row, rowIndex) => (
+    row.map((suggestion, column) => ({
+      index: firstIndex + rowIndex * columnCount + column,
       suggestion,
     }))
   ));

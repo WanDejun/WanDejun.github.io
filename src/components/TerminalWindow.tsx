@@ -9,7 +9,7 @@ import { layoutCompletions, moveCompletionIndex } from './completionPager';
 import { buildManifest } from '../filesystem/manifest';
 import { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText, terminalLines } from '../shell/ansi';
-import { fitCell, terminalCellWidth } from '../shell/columnLayout';
+import { formatColumnRow, terminalCellWidth } from '../shell/columnLayout';
 import { createRegistry } from '../shell/createRegistry';
 import { quoteShellWord } from '../shell/parser';
 import { Shell } from '../shell/Shell';
@@ -259,12 +259,15 @@ export function TerminalWindow() {
         Math.max(1, terminal.cols - 1),
         Math.max(1, terminal.rows - 4),
       );
-      const lines = layout.rows.map((row) => row.map(({ index, suggestion }) => {
-        const { text, padding } = fitCell(suggestion.value, layout.columnWidth);
-        const styled = `${ansi.color(completionColor(suggestion))}${sanitizeTerminalText(text)}${ansi.reset}`;
-        const label = index === completion?.selectedIndex ? `${ansi.inverse}${styled}` : styled;
-        return `${label}${padding}`;
-      }).join(''));
+      const lines = layout.rows.map((row) => formatColumnRow(
+        row,
+        layout.columnWidth,
+        ({ suggestion }) => suggestion.value,
+        (text, { index, suggestion }) => {
+          const styled = `${ansi.color(completionColor(suggestion))}${sanitizeTerminalText(text)}${ansi.reset}`;
+          return index === completion?.selectedIndex ? `${ansi.inverse}${styled}` : styled;
+        },
+      ));
       if (layout.showPageCounter) {
         lines.push(paint(`[${layout.page + 1}/${layout.pageCount}]`, theme.markdown.muted));
       }
