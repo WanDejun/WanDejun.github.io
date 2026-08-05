@@ -1,0 +1,18 @@
+[site]
+title = "Neko Terminal"
+window_title = "neko@homepage: ~"
+
+[terminal]
+prompt = "neko:{cwd}$ "
+theme = "tokyonight-night"
+font_family = "JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, monospace"
+font_size = 15
+cursor_blink = true
+scrollback = 5000
+max_width = 1120
+height_percent = 90
+
+[images]
+timeout_ms = 10000
+max_bytes = 8388608
+max_width_cells = 80
