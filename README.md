@@ -29,6 +29,9 @@ npm run build
 - Add or edit color palettes in `src/themes/`; the active palette is selected by
   `terminal.theme` in `config.toml`.
 
+Available palettes are `tokyonight-night`, `tokyonight-day`, `gruvbox-dark`,
+`gruvbox-light`, `molokai-dark`, and `molokai-light`.
+
 Use `cat` to read Markdown source and `render FILE.md` to render terminal-formatted
 Markdown with MathJax formula blocks, Mermaid fenced code blocks, and local or
 HTTPS images. `render` accepts one `.md` file and is intentionally unavailable

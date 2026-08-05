@@ -484,12 +484,17 @@ export function TerminalWindow() {
   }, [shell]);
 
   const variables = {
+    colorScheme: theme.colorScheme,
     '--page-bg': theme.page.background,
     '--panel-bg': theme.page.panel,
     '--titlebar-bg': theme.page.titlebar,
     '--panel-border': theme.page.border,
     '--title-color': theme.page.title,
     '--panel-shadow': theme.page.shadow,
+    '--status-red': theme.terminal.red,
+    '--status-yellow': theme.terminal.yellow,
+    '--status-green': theme.terminal.green,
+    '--scrollbar-thumb': theme.terminal.brightBlack,
     '--window-max-width': `${config.terminal.maxWidth}px`,
     '--window-height-percent': config.terminal.heightPercent,
   } as React.CSSProperties;

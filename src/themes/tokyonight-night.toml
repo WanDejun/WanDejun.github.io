@@ -1,3 +1,6 @@
+[meta]
+color_scheme = "dark"
+
 [page]
 background = "#16161e"
 panel = "#1a1b26"
@@ -40,4 +43,3 @@ quote = "#e0af68"
 muted = "#565f89"
 border = "#3b4261"
 error = "#f7768e"
-

@@ -23,6 +23,7 @@ export interface AppConfig {
 }
 
 export interface AppTheme {
+  colorScheme: 'dark' | 'light';
   page: {
     background: string;
     panel: string;

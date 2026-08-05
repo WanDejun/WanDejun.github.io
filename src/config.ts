@@ -47,6 +47,14 @@ function booleanValue(source: Table, key: string, path: string): boolean {
   return value;
 }
 
+function colorSchemeValue(source: Table): AppTheme['colorScheme'] {
+  const value = stringValue(source, 'color_scheme', 'meta');
+  if (value !== 'dark' && value !== 'light') {
+    throw new Error("Expected 'dark' or 'light' at meta.color_scheme");
+  }
+  return value;
+}
+
 function camelizeTable(source: Table): Table {
   return Object.fromEntries(
     Object.entries(source).map(([key, value]) => [
@@ -90,6 +98,7 @@ export function loadTheme(name: string): AppTheme {
   if (!entry) throw new Error(`Theme '${name}' was not found in src/themes`);
 
   const parsed = parse(entry[1]) as Table;
+  const meta = table(parsed.meta, 'meta');
   const page = camelizeTable(table(parsed.page, 'page'));
   const terminal = camelizeTable(table(parsed.terminal, 'terminal'));
   const markdown = camelizeTable(table(parsed.markdown, 'markdown'));
@@ -98,6 +107,7 @@ export function loadTheme(name: string): AppTheme {
     Object.fromEntries(keys.map((key) => [key, stringValue(source, key, path)]));
 
   return {
+    colorScheme: colorSchemeValue(meta),
     page: requireColors(page, ['background', 'panel', 'titlebar', 'border', 'title', 'shadow'], 'page') as AppTheme['page'],
     terminal: requireColors(
       terminal,
