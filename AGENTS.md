@@ -10,6 +10,8 @@ This repository is a React, TypeScript, Vite, and xterm.js static site. Applicat
 - `markdown/`: ANSI Markdown, MathJax, Mermaid, Emoji, and code highlighting.
 - `themes/`: TOML palettes. `startupRequest.ts` validates `blog` and `theme` URL parameters.
 
+Static assets use `public/resources/` and copy to `dist/resources/` during builds.
+
 Tests live in `tests/` (Vitest) and `e2e/` (Playwright). `content/posts/` maps to `/post`; project and slide directories retain their names. Slides are copied unchanged, so keep their assets self-contained with relative URLs. Edit defaults in `config.toml`. Do not edit generated output, reports, or `*.tsbuildinfo` files.
 
 ## Build, Test, and Development Commands

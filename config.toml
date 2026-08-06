@@ -1,10 +1,11 @@
 [site]
-title = "Neko Terminal"
+title = "Neko Blog"
 window_title = "neko@homepage: ~"
+favicon = "resources/icon.png"
 
 [terminal]
 prompt = "neko:{cwd}$ "
-theme = "tokyonight-night"
+theme = "gruvbox-dark"
 font_family = "JetBrains Mono, SFMono-Regular, Consolas, Liberation Mono, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, Neko Emoji, Neko Nerd Symbols, monospace"
 font_size = 15
 cursor_blink = true

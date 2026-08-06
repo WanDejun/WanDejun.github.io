@@ -33,6 +33,7 @@ describe('configuration', () => {
       [site]
       title = "Test"
       window_title = "test"
+      favicon = "resources/test-icon.png"
       [terminal]
       prompt = "user:{cwd}$ "
       theme = "tokyonight-night"
@@ -47,6 +48,7 @@ describe('configuration', () => {
       max_bytes = 10000
       max_width_cells = 60
     `);
+    expect(config.site.favicon).toBe('resources/test-icon.png');
     expect(config.terminal.prompt).toBe('user:{cwd}$ ');
     expect(config.terminal.heightPercent).toBe(90);
     expect(config.images.maxWidthCells).toBe(60);

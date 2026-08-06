@@ -1,4 +1,4 @@
-NEKO TERMINAL
+NEKO
 
 This is a read-only Linux-inspired shell for exploring the site.
 
@@ -23,17 +23,13 @@ SHELL FEATURES
   Ctrl+C cancels the current line or a running command.
 
 COMMANDS
-  basename  cat    cd      clear   cut      dirname  echo    exit   find
-  grep      head   help    ls      nl       printf   pwd     render sed
-  sort      tail   theme   tr      tree     uniq     wc      which
+  [tab] [tab] or `ls /bin` to view all supported command
 
 EXAMPLES
   find /post -type f -name '*.md'
   grep -in terminal /post/**/*.md | head -n 5
-  cat /post/hello-terminal.md
   render /post/hello-terminal.md
   render /slide/example/index.html
-  theme tokyonight-day
   printf '%s\n' alpha beta beta | sort | uniq -c
 
 The filesystem is generated from this repository. Add posts, project notes,

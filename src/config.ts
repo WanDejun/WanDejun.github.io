@@ -78,6 +78,10 @@ export function loadConfig(source = rawConfig): AppConfig {
     site: {
       title: stringValue(site, 'title', 'site'),
       windowTitle: stringValue(site, 'window_title', 'site'),
+      // Keep the fallback for consumers with an older local config file.
+      favicon: site.favicon === undefined
+        ? 'resources/icon.png'
+        : stringValue(site, 'favicon', 'site'),
     },
     terminal: {
       prompt: stringValue(terminal, 'prompt', 'terminal'),

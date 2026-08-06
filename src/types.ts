@@ -4,6 +4,7 @@ export interface AppConfig {
   site: {
     title: string;
     windowTitle: string;
+    favicon: string;
   };
   terminal: {
     prompt: string;
