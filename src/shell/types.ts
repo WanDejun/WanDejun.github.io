@@ -8,6 +8,7 @@ export interface CommandContext {
   isFinal: boolean;
   isStandalone: boolean;
   signal: AbortSignal;
+  pageUrl: string;
   theme: AppTheme;
   themeName: string;
   setCwd(path: string): void;

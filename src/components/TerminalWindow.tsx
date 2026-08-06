@@ -212,6 +212,7 @@ export function TerminalWindow() {
       palette,
       request.themeName,
       themeNames,
+      window.location.href,
     );
     return { palette, request, shell };
   }, []);

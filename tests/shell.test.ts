@@ -44,7 +44,7 @@ beforeEach(() => {
     { path: '/project/page.html', content: '<h1>Project</h1>', size: 16, mime: 'text/html' },
     { path: '/slide/example/index.html', content: '<h1>Slides</h1>', size: 15, mime: 'text/html' },
   ], registry.names());
-  shell = new Shell(fs, registry, theme, 'tokyonight-night', themeNames);
+  shell = new Shell(fs, registry, theme, 'tokyonight-night', themeNames, 'https://example.com/home/?old=value#section');
 });
 
 describe('Shell', () => {
@@ -131,6 +131,38 @@ describe('Shell', () => {
     expect((await shell.execute('which /bin/cat', controller())).chunks).toEqual([
       { type: 'text', value: '/bin/cat\n' },
     ]);
+  });
+
+  it('generates share links with the current or requested theme', async () => {
+    expect((await shell.execute('share /post/post.md', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=tokyonight-night\n',
+    }]);
+    expect((await shell.execute('share /post/post.md --theme gruvbox-light', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=gruvbox-light\n',
+    }]);
+  });
+
+  it('warns and falls back when a share theme is unsupported', async () => {
+    const result = await shell.execute('share /post/post.md --theme missing', controller());
+    expect(result.exitCode).toBe(0);
+    expect(result.chunks).toEqual([
+      { type: 'text', value: "share: warning: unsupported theme 'missing'; using 'tokyonight-night'\n" },
+      { type: 'text', value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=tokyonight-night\n' },
+    ]);
+
+    const piped = await shell.execute('share /post/post.md --theme missing | cat', controller());
+    expect(piped.chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=tokyonight-night\n',
+    }]);
+  });
+
+  it('rejects non-post share targets and malformed options', async () => {
+    expect((await shell.execute('share /project/page.html', controller())).exitCode).toBe(2);
+    expect((await shell.execute('share /post/post.md --theme', controller())).exitCode).toBe(2);
+    expect((await shell.execute('share /post/post.md --unknown', controller())).exitCode).toBe(2);
   });
 
   it('colors directories, executables, and regular files without polluting pipes', async () => {

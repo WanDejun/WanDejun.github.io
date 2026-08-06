@@ -63,7 +63,7 @@ async function glyphPixels(
 
 test('opens an interactive terminal and navigates the virtual filesystem', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle('Neko Terminal');
+  await expect(page).toHaveTitle('Neko Blog');
   await expect(page.locator('.terminal-window')).toBeVisible();
   await expect(page.locator('.xterm-helper-textarea')).toBeFocused();
   await waitForTerminalReady(page);
@@ -117,9 +117,22 @@ test('falls back to the configured theme for an invalid theme parameter', async 
   const terminal = page.locator('.xterm-accessibility-tree');
   await expect.poll(() => page.locator('.page').evaluate((element) => (
     getComputedStyle(element).backgroundColor
-  ))).toBe('rgb(22, 22, 30)');
+  ))).toBe('rgb(29, 32, 33)');
   await runCommand(page, 'theme');
-  await expect(terminal).toContainText('* tokyonight-night');
+  await expect(terminal).toContainText('* gruvbox-dark');
+});
+
+test('generates share links with the active or requested theme', async ({ page }) => {
+  await page.goto('/?theme=gruvbox-light');
+  await waitForTerminalReady(page);
+  const terminal = page.locator('.xterm-accessibility-tree');
+
+  await runCommand(page, 'share /post/hello-terminal.md');
+  await expect(terminal).toContainText('blog=%2Fpost%2Fhello-terminal.md&theme=gruvbox-light');
+
+  await runCommand(page, 'share /post/hello-terminal.md --theme missing');
+  await expect(terminal).toContainText("share: warning: unsupported theme 'missing'");
+  await expect(terminal).toContainText('blog=%2Fpost%2Fhello-terminal.md&theme=gruvbox-light');
 });
 
 test('selects path completions with Tab and arrow keys before executing', async ({ page }) => {

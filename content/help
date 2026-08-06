@@ -10,11 +10,13 @@ GETTING STARTED
   render path/to/post.md  Render Markdown, formulas, diagrams, and images
   render /slide/example/index.html  Open an HTML slide in a floating window
   theme gruvbox-light  Switch the terminal and page color palette
+  share /post/name.md  Generate a shareable URL for a post
 
 SHARING
   Add ?blog=/post/name.md to the site URL to render that post on startup.
   Add ?theme=gruvbox-light to select a theme; invalid names use the default.
   Parameters can be combined: ?blog=/post/name.md&theme=gruvbox-light
+  Use share /post/name.md --theme gruvbox-light to generate a complete link.
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.

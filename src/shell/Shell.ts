@@ -18,6 +18,7 @@ export class Shell {
     private theme: AppTheme,
     private themeName = '',
     private readonly availableThemes: readonly string[] = [],
+    private readonly pageUrl = 'http://localhost/',
   ) {}
 
   setTheme(name: string, nextTheme: AppTheme): void {
@@ -62,6 +63,7 @@ export class Shell {
         // Rich renderers cannot safely exchange terminal-only chunks through stdout.
         isStandalone: pipeline.length === 1,
         signal,
+        pageUrl: this.pageUrl,
         theme: this.theme,
         themeName: this.themeName,
         setCwd: (path) => { this.cwd = path; },

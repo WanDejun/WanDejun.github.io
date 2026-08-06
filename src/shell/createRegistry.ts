@@ -8,6 +8,7 @@ import {
   trCommand, uniqCommand, whichCommand,
 } from './commands/textCommands';
 import { renderCommand } from './commands/renderCommand';
+import { shareCommand } from './commands/shareCommand';
 import { themeCommand } from './commands/themeCommand';
 import type { Command } from './types';
 
@@ -27,7 +28,7 @@ export function createRegistry(): CommandRegistry {
     basenameCommand, catCommand, cdCommand, clearCommand, cutCommand, dirnameCommand,
     echoCommand, exitCommand, findCommand, grepCommand, headCommand,
     helpCommand, lsCommand, nlCommand, printfCommand, pwdCommand, sedCommand, sortCommand,
-    renderCommand, tailCommand, themeCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
+    renderCommand, shareCommand, tailCommand, themeCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,
   ].forEach((command) => registry.register(command));
   return registry;
 }

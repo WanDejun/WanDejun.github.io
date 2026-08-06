@@ -29,6 +29,8 @@ npm run build
   their names; `content/posts/example.md` becomes `/post/example.md`.
 - Share a rendered post with `?blog=/post/example.md`. Valid links start in the
   post's directory; missing posts show a terminal 404 and start at `/`.
+- Generate a complete link from the terminal with `share /post/example.md` or
+  override its palette with `share /post/example.md --theme gruvbox-light`.
 - Select a startup palette with `?theme=gruvbox-light`. Unknown theme names
   fall back to the `terminal.theme` value in `config.toml`.
 - Edit the prompt, terminal sizing, active theme, and image limits in
