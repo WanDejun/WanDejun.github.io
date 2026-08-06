@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Project"
+  short_description: "Run the right checks for repository changes"
+  default_prompt: "Use $verify-project to validate the current repository changes and report any failures."

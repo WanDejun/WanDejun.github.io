@@ -1,0 +1,4 @@
+interface:
+  display_name: "Publish Content"
+  short_description: "Add posts, assets, projects, and slide decks"
+  default_prompt: "Use $publish-content to add or reorganize repository content with valid virtual paths."

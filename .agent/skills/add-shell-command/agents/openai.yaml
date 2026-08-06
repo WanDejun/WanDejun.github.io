@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Shell Command"
+  short_description: "Add and validate virtual shell commands"
+  default_prompt: "Use $add-shell-command to implement a virtual shell command with documentation and tests."
