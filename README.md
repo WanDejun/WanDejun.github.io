@@ -54,3 +54,13 @@ Markdown file or slide `index.html` and is intentionally unavailable in pipeline
 `.github/workflows/deploy-pages.yml` tests and builds pushes to `main` or
 `master`, then deploys the `dist/` artifact with GitHub Pages Actions. In the
 repository settings, set Pages source to **GitHub Actions**.
+
+## License
+
+[![CC BY-NC 4.0](https://mirrors.creativecommons.org/presskit/buttons/88x31/svg/by-nc.svg)](http://creativecommons.org/licenses/by-nc/4.0/)
+
+This project is licensed under the **CC BY-NC 4.0** (Creative Commons Attribution-NonCommercial 4.0 International) License.
+
+- **Share & Adapt**: You are free to copy, redistribute, modify, and build upon the material.
+- **NonCommercial**: You may **not** use the material for commercial purposes.
+- For full license details, please see the [LICENSE](LICENSE) file.
