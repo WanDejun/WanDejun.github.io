@@ -17,15 +17,25 @@ const helpCommand: Command = {
   description: 'Show the help file',
   usage: 'help',
   execute(_args, stdin, context) {
-    // Delegate instead of copying help text so `help` and `cat /help` cannot drift.
-    return catCommand.execute(['/help'], stdin, context);
+    // Delegate instead of copying help text so the command and static file cannot drift.
+    return catCommand.execute(['/static/help'], stdin, context);
+  },
+};
+
+const aboutMeCommand: Command = {
+  name: 'about_me',
+  description: 'Render the about page',
+  usage: 'about_me',
+  execute(args, stdin, context) {
+    // Use the absolute virtual path so the command works from every cwd.
+    return renderCommand.execute(['/static/about_me.md', ...args], stdin, context);
   },
 };
 
 export function createRegistry(): CommandRegistry {
   const registry = new CommandRegistry();
   [
-    basenameCommand, catCommand, cdCommand, clearCommand, cutCommand, dirnameCommand,
+    aboutMeCommand, basenameCommand, catCommand, cdCommand, clearCommand, cutCommand, dirnameCommand,
     echoCommand, exitCommand, findCommand, grepCommand, headCommand,
     helpCommand, lsCommand, nlCommand, printfCommand, pwdCommand, sedCommand, sortCommand,
     renderCommand, shareCommand, tailCommand, themeCommand, trCommand, treeCommand, uniqCommand, wcCommand, whichCommand,

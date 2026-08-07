@@ -74,6 +74,7 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
   await expect(terminal).toContainText('post/');
   await expect(terminal).toContainText('project/');
   await expect(terminal).toContainText('slide/');
+  await expect(terminal).toContainText('static/');
 
   await runCommand(page, 'cd /post');
   await runCommand(page, 'pwd');
@@ -81,6 +82,9 @@ test('opens an interactive terminal and navigates the virtual filesystem', async
 
   await runCommand(page, 'help');
   await expect(terminal).toContainText('standalone slide directories', { timeout: 15_000 });
+
+  await runCommand(page, 'about_me');
+  await expect(terminal).toContainText('Harbin Engineering University');
 });
 
 test('opens a shared post with its requested theme and starts in its directory', async ({ page }) => {
@@ -221,6 +225,38 @@ test('opens a static slide and transfers keyboard focus into it', async ({ page 
   await page.locator('.document-close').click();
   await expect(overlay).not.toBeVisible();
   await expect(page.locator('.xterm-helper-textarea')).toBeFocused();
+});
+
+test('renders Markdown in a themed document window without changing the default renderer', async ({ page }) => {
+  await page.goto('/?theme=gruvbox-light');
+  await waitForTerminalReady(page);
+  await runCommand(page, 'render --window /post/hello-terminal.md');
+
+  const content = page.locator('.document-content');
+  const article = page.locator('.markdown-document');
+  await expect(content).toBeVisible();
+  await expect(content).toBeFocused();
+  await expect(article.getByRole('heading', { name: 'Hello from the terminal' })).toBeVisible();
+  await expect(article.getByRole('checkbox', { name: 'Incomplete' })).not.toBeChecked();
+  await expect(article.getByRole('checkbox', { name: 'Completed' })).toBeChecked();
+  await expect(article.locator('.markdown-formula svg')).toHaveCount(2, { timeout: 30_000 });
+  await expect(article.locator('.markdown-diagram svg')).toHaveCount(2, { timeout: 30_000 });
+  await expect(article.locator('.markdown-render-error')).toHaveCount(0);
+  await expect.poll(() => content.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(251, 241, 199)');
+  await expect.poll(() => article.locator('h1').evaluate((element) => getComputedStyle(element).color)).toBe('rgb(7, 102, 120)');
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  const terminalText = await terminal.textContent();
+  await page.keyboard.press('x');
+  expect(await terminal.textContent()).toBe(terminalText);
+
+  await page.keyboard.press('Escape');
+  await expect(content).not.toBeVisible();
+  await expect(page.locator('.xterm-helper-textarea')).toBeFocused();
+
+  await runCommand(page, 'render /static/about_me.md');
+  await expect(terminal).toContainText('Harbin Engineering University');
+  await expect(page.locator('.document-window')).not.toBeVisible();
 });
 
 test('renders a MathJax formula through the iTerm2 image layer', async ({ page }) => {

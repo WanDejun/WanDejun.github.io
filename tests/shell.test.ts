@@ -7,6 +7,7 @@ import { terminalCellWidth } from '../src/shell/columnLayout';
 import { Shell } from '../src/shell/Shell';
 
 const controller = () => new AbortController().signal;
+const aboutSource = '# About Me\n\nProfile text.\n';
 const postSource = `# Post
 
 ### Deep heading
@@ -40,7 +41,8 @@ let shell: Shell;
 beforeEach(() => {
   const registry = createRegistry();
   const fs = new VirtualFileSystem([
-    { path: '/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
+    { path: '/static/about_me.md', content: aboutSource, size: new TextEncoder().encode(aboutSource).byteLength, mime: 'text/markdown' },
+    { path: '/static/help', content: 'Use help.\n', size: 10, mime: 'text/plain' },
     { path: '/post/post.md', content: postSource, size: new TextEncoder().encode(postSource).byteLength, mime: 'text/markdown', url: '/post.md' },
     { path: '/post/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
     { path: '/post/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
@@ -51,10 +53,18 @@ beforeEach(() => {
 });
 
 describe('Shell', () => {
-  it('implements help through the /help file', async () => {
+  it('implements help through the /static/help file', async () => {
     const help = await shell.execute('help', controller());
-    const cat = await shell.execute('cat /help', controller());
+    const cat = await shell.execute('cat /static/help', controller());
     expect(help.chunks).toEqual(cat.chunks);
+  });
+
+  it('renders the root about page from every working directory', async () => {
+    const direct = await shell.execute('render /static/about_me.md', controller());
+    await shell.execute('cd /post', controller());
+    expect((await shell.execute('about_me', controller())).chunks).toEqual(direct.chunks);
+    expect((await shell.execute('about_me unexpected', controller())).exitCode).toBe(2);
+    expect((await shell.execute('about_me | cat', controller())).exitCode).toBe(2);
   });
 
   it('changes cwd and runs text pipelines', async () => {
@@ -173,7 +183,11 @@ describe('Shell', () => {
     expect(root.chunks).toEqual([{ type: 'ansi', value: expect.any(String) }]);
     const rootOutput = root.chunks[0].type === 'ansi' ? root.chunks[0].value : '';
     expect(rootOutput).toContain(`${ansi.color(theme.terminal.blue!)}bin/`);
-    expect(rootOutput).toContain(`${ansi.color(theme.terminal.white!)}help`);
+    expect(rootOutput).toContain(`${ansi.color(theme.terminal.blue!)}static/`);
+
+    const staticFiles = await shell.execute('ls /static', controller());
+    const staticOutput = staticFiles.chunks[0].type === 'ansi' ? staticFiles.chunks[0].value : '';
+    expect(staticOutput).toContain(`${ansi.color(theme.terminal.white!)}help`);
 
     const bin = await shell.execute('tree /bin -L 1', controller());
     const binOutput = bin.chunks[0].type === 'ansi' ? bin.chunks[0].value : '';
@@ -189,7 +203,7 @@ describe('Shell', () => {
     expect(narrow.chunks).toHaveLength(1);
     const output = narrow.chunks[0].type === 'text' ? narrow.chunks[0].value : '';
     const lines = output.trimEnd().split('\n');
-    expect(lines.slice(0, 2)).toEqual(['basename  cat', 'cd        clear']);
+    expect(lines.slice(0, 2)).toEqual(['about_me  basename', 'cat       cd']);
     expect(lines.length).toBeGreaterThan(2);
     expect(lines.every((line) => terminalCellWidth(line) <= 23)).toBe(true);
 
@@ -242,6 +256,12 @@ describe('Shell', () => {
   });
 
   it('opens only slide index HTML files as standalone documents', async () => {
+    expect((await shell.execute('render --window /post/post.md', controller())).chunks).toEqual([
+      { type: 'markdown-document', path: '/post/post.md', title: 'post.md' },
+    ]);
+    expect((await shell.execute('render /post/post.md -w', controller())).chunks).toEqual([
+      { type: 'markdown-document', path: '/post/post.md', title: 'post.md' },
+    ]);
     expect((await shell.execute('render /slide/example/index.html', controller())).chunks).toEqual([
       { type: 'document', path: '/slide/example/index.html', title: 'example' },
     ]);
@@ -255,8 +275,9 @@ describe('Shell', () => {
 
     for (const command of [
       'render',
-      'render /help',
+      'render /static/help',
       'render /post/post.md /post/post.md',
+      'render --window /post/post.md | cat',
       'render /post/post.md | grep Post',
       'cat /post/post.md | render /post/post.md',
     ]) {

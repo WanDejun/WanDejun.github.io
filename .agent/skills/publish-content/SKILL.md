@@ -10,6 +10,7 @@ description: Add or reorganize Markdown posts, post images and binary assets, pr
 - Put blog Markdown under `content/posts/`; it maps to virtual `/post`, not `/posts`.
 - Put project-oriented articles under `content/project/`; they map to `/project`.
 - Put standalone presentations under `content/slide/<name>/index.html`; they map to `/slide/<name>/index.html`.
+- Keep shell documents such as `/static/help` and `/static/welcome.md` under `content/static/`.
 - Reserve `public/resources/` for site-wide UI assets such as the favicon, not article-specific media.
 
 ## Organize Article Assets

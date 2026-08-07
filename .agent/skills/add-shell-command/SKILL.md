@@ -15,7 +15,7 @@ Read `AGENTS.md`, `src/shell/types.ts`, `src/shell/Shell.ts`, and a neighboring 
 2. Add simple filesystem commands to `src/shell/commands/fileCommands.ts`, text filters to `textCommands.ts`, or create a focused command file for richer behavior.
 3. Export the command as `<name>Command` and register it in `src/shell/createRegistry.ts`. Registration automatically exposes it as `/bin/<name>` in the virtual filesystem.
 4. Set `completion` only when useful: `files`, `directories`, `commands`, or `themes`. Commands without a policy intentionally return no candidates.
-5. Update `content/help`, plus `README.md` or `content/welcome.md` when the command changes a visitor-facing workflow.
+5. Update `content/static/help`, plus `README.md` or `content/static/welcome.md` when the command changes a visitor-facing workflow.
 
 ## Preserve Shell Contracts
 

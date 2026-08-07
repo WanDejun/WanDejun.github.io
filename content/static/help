@@ -8,7 +8,9 @@ GETTING STARTED
   cd /post              Change the working directory
   cat path/to/post.md   Read Markdown source
   render path/to/post.md  Render Markdown, formulas, diagrams, and images
+  render --window path/to/post.md  Render Markdown in a separate window
   render /slide/example/index.html  Open an HTML slide in a floating window
+  about_me              Render the about page
   theme gruvbox-light  Switch the terminal and page color palette
   share /post/name.md  Generate a shareable URL for a post
 

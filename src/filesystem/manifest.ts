@@ -1,7 +1,7 @@
 import type { ManifestFile } from '../types';
 import { mimeForPath } from './mime';
 
-// Every content file is exposed at the virtual root. URL and text views stay
+// Content directories retain their virtual paths. URL and text views stay
 // separate so binary assets remain intact while shell commands can read source.
 const contentUrls = import.meta.glob('/content/**/*', {
   eager: true,

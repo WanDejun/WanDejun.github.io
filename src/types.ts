@@ -64,6 +64,7 @@ export type OutputChunk =
   | { type: 'formula'; source: string; display: boolean }
   | { type: 'diagram'; source: string }
   | { type: 'document'; path: string; title: string }
+  | { type: 'markdown-document'; path: string; title: string }
   | { type: 'theme'; name: string }
   | { type: 'clear' }
   | { type: 'reset' };

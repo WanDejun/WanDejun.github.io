@@ -8,29 +8,15 @@ import markdown from 'highlight.js/lib/languages/markdown';
 import python from 'highlight.js/lib/languages/python';
 import rust from 'highlight.js/lib/languages/rust';
 import typescript from 'highlight.js/lib/languages/typescript';
-import { Marked, type Token, type TokenizerExtension, type Tokens } from 'marked';
+import { type Token, type Tokens } from 'marked';
 import { emojify } from 'node-emoji';
-import { basename, dirname } from '../filesystem/VirtualFileSystem';
 import { ansi, paint, sanitizeTerminalText } from '../shell/ansi';
 import type { CommandContext } from '../shell/types';
 import type { OutputChunk } from '../types';
+import { createMarkdownParser, type FormulaToken } from './markdownParser';
+import { resolveMarkdownImage } from './resolveImage';
 
 type InlineToken = Tokens.Generic & { tokens?: InlineToken[]; text?: string; href?: string; raw?: string };
-type FormulaToken = Tokens.Generic & { type: 'formula'; text: string; display: true };
-
-const formulaExtension: TokenizerExtension = {
-  name: 'formula',
-  level: 'block',
-  start(source) {
-    return source.match(/^\$\$[ \t]*$/m)?.index;
-  },
-  tokenizer(source) {
-    // Requiring delimiters on their own lines avoids treating ordinary dollar signs as TeX.
-    const match = /^\$\$[ \t]*\n([\s\S]+?)\n\$\$(?:[ \t]*\n|[ \t]*$)/.exec(source);
-    if (!match) return undefined;
-    return { type: 'formula', raw: match[0], text: match[1].trim(), display: true };
-  },
-};
 
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('shell', bash);
@@ -50,7 +36,7 @@ hljs.registerLanguage('typescript', typescript);
 hljs.registerLanguage('ts', typescript);
 
 export class TerminalMarkdownRenderer {
-  private readonly marked = new Marked({ gfm: true, breaks: false }).use({ extensions: [formulaExtension] });
+  private readonly marked = createMarkdownParser();
 
   render(source: string, sourcePath: string, context: CommandContext): OutputChunk[] {
     const tokens = this.marked.lexer(source);
@@ -165,13 +151,13 @@ export class TerminalMarkdownRenderer {
         case 'image': {
           const href = token.href ?? '';
           const alt = text || 'image';
-          const resolved = this.resolveImage(href, sourcePath, context);
-          if (resolved.error) {
+          const resolved = resolveMarkdownImage(href, sourcePath, context.fs);
+          if ('error' in resolved) {
             const message = `[image: ${alt}; ${resolved.error}; ${href}]`;
             chunks.push({ type: 'ansi', value: paint(message, context.theme.markdown.error) });
           } else {
             chunks.push({ type: 'ansi', value: `\n${paint(`[image: ${alt}]`, context.theme.markdown.muted)}\n` });
-            chunks.push({ type: 'image', source: resolved.source!, alt, name: basename(href) || 'image' });
+            chunks.push({ type: 'image', source: resolved.source, alt, name: resolved.name });
             chunks.push({ type: 'ansi', value: '\n' });
           }
           break;
@@ -247,21 +233,6 @@ export class TerminalMarkdownRenderer {
       if (!('text' in token) || typeof token.text !== 'string') return '';
       return token.type === 'codespan' || token.type === 'code' ? token.text : emojify(token.text);
     }).join('\n');
-  }
-
-  private resolveImage(href: string, sourcePath: string, context: CommandContext): { source?: string; error?: string } {
-    if (/^https:\/\//i.test(href)) return { source: href };
-    if (/^http:\/\//i.test(href)) return { source: href };
-    if (/^[a-z]+:/i.test(href)) return { error: 'unsupported URL scheme' };
-    try {
-      // Markdown image paths are relative to the post, not to the current shell cwd.
-      const path = context.fs.normalize(href, dirname(sourcePath));
-      const node = context.fs.require(path);
-      if (node.type !== 'file' || !node.mime.startsWith('image/')) return { error: 'not a supported image file' };
-      return { source: context.fs.imageSource(path) };
-    } catch (error) {
-      return { error: (error as Error).message };
-    }
   }
 
   private highlight(code: string, language: string | undefined, context: CommandContext): string {

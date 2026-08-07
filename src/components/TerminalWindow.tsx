@@ -393,7 +393,8 @@ export function TerminalWindow() {
         else if (chunk.type === 'image') await writeImage(terminal, chunk, controller.signal, currentTheme);
         else if (chunk.type === 'formula') await writeFormula(terminal, chunk, controller.signal, currentTheme);
         else if (chunk.type === 'diagram') await writeDiagram(terminal, chunk, controller.signal, currentTheme);
-        else if (chunk.type === 'document') setDocumentPreview({ path: chunk.path, title: chunk.title });
+        else if (chunk.type === 'document') setDocumentPreview({ kind: 'slide', path: chunk.path, title: chunk.title });
+        else if (chunk.type === 'markdown-document') setDocumentPreview({ kind: 'markdown', path: chunk.path, title: chunk.title });
         else if (chunk.type === 'theme') {
           currentTheme = loadTheme(chunk.name);
           shell.setTheme(chunk.name, currentTheme);
@@ -417,7 +418,7 @@ export function TerminalWindow() {
         return;
       }
 
-      const path = request.blog.type === 'found' ? request.blog.path : '/welcome.md';
+      const path = request.blog.type === 'found' ? request.blog.path : '/static/welcome.md';
       if (request.blog.type === 'found') shell.cwd = request.blog.cwd;
       // Equivalent to a bashrc command: startup and `exit` both use the public render path.
       const startupResult = await shell.execute(`render ${quoteShellWord(path)}`, controller.signal, terminal.cols);
@@ -560,6 +561,18 @@ export function TerminalWindow() {
     '--status-yellow': activeTheme.terminal.yellow,
     '--status-green': activeTheme.terminal.green,
     '--scrollbar-thumb': activeTheme.terminal.brightBlack,
+    '--terminal-bg': activeTheme.terminal.background,
+    '--terminal-fg': activeTheme.terminal.foreground,
+    '--markdown-heading': activeTheme.markdown.heading,
+    '--markdown-strong': activeTheme.markdown.strong,
+    '--markdown-emphasis': activeTheme.markdown.emphasis,
+    '--markdown-link': activeTheme.markdown.link,
+    '--markdown-code': activeTheme.markdown.code,
+    '--markdown-quote': activeTheme.markdown.quote,
+    '--markdown-muted': activeTheme.markdown.muted,
+    '--markdown-border': activeTheme.markdown.border,
+    '--markdown-error': activeTheme.markdown.error,
+    '--terminal-font': config.terminal.fontFamily,
     '--window-max-width': `${config.terminal.maxWidth}px`,
     '--window-height-percent': config.terminal.heightPercent,
   } as React.CSSProperties;
@@ -585,7 +598,7 @@ export function TerminalWindow() {
           <div ref={hostRef} className="terminal-mount" />
         </div>
       </section>
-      {documentPreview && <DocumentOverlay document={documentPreview} onClose={closeDocument} />}
+      {documentPreview && <DocumentOverlay document={documentPreview} fs={startup.shell.fs} theme={activeTheme} onClose={closeDocument} />}
     </main>
   );
 }
