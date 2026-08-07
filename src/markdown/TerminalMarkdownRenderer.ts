@@ -199,7 +199,11 @@ export class TerminalMarkdownRenderer {
     const start = typeof list.start === 'number' ? list.start : Number(list.start) || 1;
 
     list.items.forEach((item, index) => {
-      const marker = list.ordered ? `${start + index}.` : '•';
+      // Marked exposes GFM task items separately from their text. Preserve that
+      // state in the terminal output instead of treating them as plain bullets.
+      const marker = item.task
+        ? (item.checked ? '[x]' : '[ ]')
+        : (list.ordered ? `${start + index}.` : '•');
       const continuationIndent = `${indent}${' '.repeat(marker.length + 1)}`;
       let hasText = false;
 
@@ -218,7 +222,7 @@ export class TerminalMarkdownRenderer {
         for (const textLine of text.split('\n')) {
           const prefix = hasText
             ? continuationIndent
-            : `${indent}${paint(marker, context.theme.markdown.heading)} `;
+            : `${indent}${paint(marker, item.task && item.checked ? context.theme.markdown.strong : context.theme.markdown.heading)} `;
           lines.push(`${prefix}${textLine}`.trimEnd());
           hasText = true;
         }

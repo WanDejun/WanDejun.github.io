@@ -19,6 +19,9 @@ const postSource = `# Post
    - Nested child
 2. Last item
 
+- [ ] Pending task
+- [x] Completed task
+
 $$
 E = mc^2
 $$
@@ -232,6 +235,9 @@ describe('Shell', () => {
       '',
       '   • Nested child',
       '2. Last item',
+      '',
+      '[ ] Pending task',
+      '[x] Completed task',
     ].join('\n'));
   });
 

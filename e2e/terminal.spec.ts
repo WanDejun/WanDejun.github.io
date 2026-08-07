@@ -89,6 +89,8 @@ test('opens a shared post with its requested theme and starts in its directory',
   await waitForTerminalReady(page, '/post');
 
   const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('[ ] Add a new post');
+  await expect(terminal).toContainText('[x] Render this example');
   await expect(terminal).toContainText('This flowchart is rendered by Mermaid.');
   await expect.poll(() => page.locator('.page').evaluate((element) => (
     getComputedStyle(element).backgroundColor

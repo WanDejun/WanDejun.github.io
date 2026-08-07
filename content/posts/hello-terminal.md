@@ -172,3 +172,8 @@ flowchart LR
 ```
 
 This flowchart is rendered by Mermaid.
+
+## TODO list
+
+- [ ] Add a new post under `content/posts/`.
+- [x] Render this example with MathJax and Mermaid.
