@@ -3,6 +3,7 @@ import { type Token, type Tokens } from 'marked';
 import { emojify } from 'node-emoji';
 import type { VirtualFileSystem } from '../filesystem/VirtualFileSystem';
 import type { AppTheme } from '../types';
+import { highlightCode } from '../markdown/highlightCode';
 import { createMarkdownParser, type FormulaToken } from '../markdown/markdownParser';
 import { resolveMarkdownImage } from '../markdown/resolveImage';
 
@@ -83,7 +84,12 @@ function renderBlock(token: Token, path: string, fs: VirtualFileSystem, theme: A
       }
       return (
         <pre>
-          <code data-language={code.lang || undefined}>{code.text}</code>
+          <code
+            className="markdown-code"
+            data-language={code.lang || undefined}
+            // Highlight.js escapes source text before adding only its own spans.
+            dangerouslySetInnerHTML={{ __html: highlightCode(code.text, code.lang) }}
+          />
         </pre>
       );
     }

@@ -281,6 +281,42 @@ body {
   line-height: 1.55;
 }
 
+.markdown-code .hljs-keyword,
+.markdown-code .hljs-selector-tag,
+.markdown-code .hljs-type,
+.markdown-code .hljs-built_in,
+.markdown-code .hljs-literal {
+  color: var(--markdown-heading);
+}
+
+.markdown-code .hljs-string,
+.markdown-code .hljs-regexp,
+.markdown-code .hljs-attr {
+  color: var(--markdown-code);
+}
+
+.markdown-code .hljs-number,
+.markdown-code .hljs-symbol,
+.markdown-code .hljs-bullet {
+  color: var(--markdown-strong);
+}
+
+.markdown-code .hljs-comment,
+.markdown-code .hljs-quote {
+  color: var(--markdown-muted);
+}
+
+.markdown-code .hljs-title,
+.markdown-code .hljs-function,
+.markdown-code .hljs-name {
+  color: var(--markdown-link);
+}
+
+.markdown-code .hljs-variable,
+.markdown-code .hljs-params {
+  color: var(--markdown-emphasis);
+}
+
 .markdown-document blockquote {
   margin: 1.1em 0;
   padding: 0.15em 0 0.15em 1em;

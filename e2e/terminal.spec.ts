@@ -242,6 +242,9 @@ test('renders Markdown in a themed document window without changing the default 
   await expect(article.locator('.markdown-formula svg')).toHaveCount(2, { timeout: 30_000 });
   await expect(article.locator('.markdown-diagram svg')).toHaveCount(2, { timeout: 30_000 });
   await expect(article.locator('.markdown-render-error')).toHaveCount(0);
+  const highlightedKeyword = article.locator('pre .hljs-keyword').first();
+  await expect(highlightedKeyword).toBeVisible();
+  await expect.poll(() => highlightedKeyword.evaluate((element) => getComputedStyle(element).color)).toBe('rgb(7, 102, 120)');
   await expect.poll(() => content.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(251, 241, 199)');
   await expect.poll(() => article.locator('h1').evaluate((element) => getComputedStyle(element).color)).toBe('rgb(7, 102, 120)');
 
