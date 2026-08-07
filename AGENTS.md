@@ -8,7 +8,7 @@ React, TypeScript, Vite, and xterm.js code lives in `src/`:
 - `shell/`: parser, registry, command implementations, and ANSI helpers.
 - `filesystem/`: read-only virtual filesystem, manifest, and MIME handling.
 - `markdown/`: ANSI Markdown, MathJax, Mermaid, Emoji, and code highlighting.
-- `themes/`: TOML palettes. `startupRequest.ts` validates `blog` and `theme` URL parameters.
+- `themes/`: TOML palettes. `startupRequest.ts` validates `blog`, `theme`, and `window` URL parameters.
 
 Static assets use `public/resources/` and copy to `dist/resources/` during builds.
 Repository workflows live in `.agent/skills/`; use the matching `SKILL.md` for command, verification, or content work.

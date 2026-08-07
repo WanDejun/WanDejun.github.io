@@ -7,6 +7,7 @@ const fs = new VirtualFileSystem([
   { path: '/post/archive/deep-dive.md', content: '# Deep dive\n', size: 12, mime: 'text/markdown' },
   { path: '/post/image.png', size: 10, mime: 'image/png' },
   { path: '/project/notes.md', content: '# Notes\n', size: 8, mime: 'text/markdown' },
+  { path: '/slide/example/index.html', content: '<h1>Slides</h1>', size: 18, mime: 'text/html' },
 ]);
 const defaultTheme = 'tokyonight-night';
 const themeNames = ['gruvbox-light', defaultTheme];
@@ -15,7 +16,7 @@ const resolveRequest = (search: string) => resolveStartupRequest(search, fs, def
 
 describe('startup request', () => {
   it('keeps the default startup when no parameters are present', () => {
-    expect(resolveRequest('')).toEqual({ blog: { type: 'default' }, themeName: defaultTheme });
+    expect(resolveRequest('')).toEqual({ blog: { type: 'default' }, themeName: defaultTheme, window: false });
   });
 
   it('resolves a shared post and its working directory', () => {
@@ -24,6 +25,7 @@ describe('startup request', () => {
       path: '/post/hello-terminal.md',
       cwd: '/post',
     });
+    expect(resolveRequest('?blog=%2Fpost%2Fhello-terminal.md').window).toBe(false);
     expect(resolveRequest('?blog=/post/archive/deep-dive.md').blog).toEqual({
       type: 'found',
       path: '/post/archive/deep-dive.md',
@@ -31,13 +33,35 @@ describe('startup request', () => {
     });
   });
 
+  it('resolves every renderable target and a windowed Markdown request', () => {
+    expect(resolveRequest('?blog=/project/notes.md&window=true')).toEqual({
+      blog: { type: 'found', path: '/project/notes.md', cwd: '/project' },
+      themeName: defaultTheme,
+      window: true,
+    });
+    expect(resolveRequest('?blog=/slide/example/index.html&window=true')).toEqual({
+      blog: { type: 'found', path: '/slide/example/index.html', cwd: '/slide/example' },
+      themeName: defaultTheme,
+      window: true,
+    });
+    expect(resolveRequest('?blog=/slide/example/index.html&window=false').window).toBe(false);
+  });
+
+  it.each(['', '?window=false', '?window=1', '?window=TRUE'])('defaults window to false unless true: %s', (search) => {
+    expect(resolveRequest(search).window).toBe(false);
+  });
+
+  it('accepts the literal true window parameter', () => {
+    expect(resolveRequest('?window=true').window).toBe(true);
+  });
+
   it.each([
     '?blog=',
     '?blog=/post/missing.md',
     '?blog=/post/image.png',
-    '?blog=/project/notes.md',
-    '?blog=/post/../project/notes.md',
-  ])('rejects an invalid shared post: %s', (search) => {
+    '?blog=/project/page.html',
+    '?blog=/project/missing.html',
+  ])('rejects an invalid shared target: %s', (search) => {
     expect(resolveRequest(search).blog).toEqual({ type: 'not-found' });
   });
 
@@ -45,6 +69,7 @@ describe('startup request', () => {
     expect(resolveRequest('?blog=/post/hello-terminal.md&theme=gruvbox-light')).toMatchObject({
       blog: { type: 'found', path: '/post/hello-terminal.md' },
       themeName: 'gruvbox-light',
+      window: false,
     });
   });
 

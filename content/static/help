@@ -6,19 +6,23 @@ GETTING STARTED
   ls /                  List the virtual root
   tree /post            Browse every post
   cd /post              Change the working directory
-  cat path/to/post.md   Read Markdown source
-  render path/to/post.md  Render Markdown, formulas, diagrams, and images
-  render --window path/to/post.md  Render Markdown in a separate window
+  cat path/to/file.md   Read Markdown source
+  render path/to/file.md  Render Markdown, formulas, diagrams, and images
+  render --window path/to/file.md  Render Markdown in a separate window
   render /slide/example/index.html  Open an HTML slide in a floating window
   about_me              Render the about page
   theme gruvbox-light  Switch the terminal and page color palette
-  share /post/name.md  Generate a shareable URL for a post
+  share /path/to/file.md  Generate a shareable Markdown URL
+  share /slide/name/index.html  Generate a shareable slide URL
+  share FILE.md --window  Share Markdown in a separate window
 
 SHARING
-  Add ?blog=/post/name.md to the site URL to render that post on startup.
+  Add ?blog=/path/to/file.md to the site URL to render any Markdown file on startup.
+  Slide links use ?blog=/slide/name/index.html and open in a floating window.
   Add ?theme=gruvbox-light to select a theme; invalid names use the default.
-  Parameters can be combined: ?blog=/post/name.md&theme=gruvbox-light
-  Use share /post/name.md --theme gruvbox-light to generate a complete link.
+  Add ?window=true to render Markdown in a floating window; it has no effect on slides.
+  Parameters can be combined: ?blog=/post/name.md&theme=gruvbox-light&window=true
+  Use share FILE.md --theme gruvbox-light --window to generate a complete link.
 
 SHELL FEATURES
   Paths, quoted arguments, wildcards, and pipelines are supported.

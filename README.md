@@ -27,10 +27,13 @@ npm run build
   paths continue to work. Open them with `render /slide/NAME/index.html`.
 - Content is exposed through the virtual filesystem. Most directories retain
   their names; `content/posts/example.md` becomes `/post/example.md`.
-- Share a rendered post with `?blog=/post/example.md`. Valid links start in the
-  post's directory; missing posts show a terminal 404 and start at `/`.
-- Generate a complete link from the terminal with `share /post/example.md` or
-  override its palette with `share /post/example.md --theme gruvbox-light`.
+- Share any Markdown file or slide with `?blog=/path/to/file.md` or
+  `?blog=/slide/NAME/index.html`. Valid links start in the target's directory;
+  missing targets show a terminal 404 and start at `/`.
+- Add `&window=true` to a Markdown link to open it in a separate window. Slides
+  always open in their floating document window.
+- Generate a complete link from the terminal with `share /path/to/file.md`, or
+  add `--theme gruvbox-light` and `--window` when needed.
 - Select a startup palette with `?theme=gruvbox-light`. Unknown theme names
   fall back to the `terminal.theme` value in `config.toml`.
 - Edit the prompt, terminal sizing, active theme, and image limits in

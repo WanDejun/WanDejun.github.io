@@ -1,4 +1,5 @@
 import { dirname, type VirtualFileSystem } from './filesystem/VirtualFileSystem';
+import { resolveRenderableTarget } from './renderTarget';
 
 export const BLOG_NOT_FOUND = [
   ' _  _    ___  _  _',
@@ -16,6 +17,7 @@ export type BlogRequest =
 export interface StartupRequest {
   blog: BlogRequest;
   themeName: string;
+  window: boolean;
 }
 
 export function resolveStartupRequest(
@@ -31,18 +33,16 @@ export function resolveStartupRequest(
     themeName: requestedTheme && availableThemes.includes(requestedTheme)
       ? requestedTheme
       : defaultTheme,
+    window: parameters.get('window') === 'true',
   };
 }
 
 function resolveBlogParameter(parameters: URLSearchParams, fs: VirtualFileSystem): BlogRequest {
   if (!parameters.has('blog')) return { type: 'default' };
 
-  const path = fs.normalize(parameters.get('blog') ?? '');
-  if (!path.startsWith('/post/')) return { type: 'not-found' };
   try {
-    const node = fs.require(path);
-    if (node.type !== 'file' || node.mime !== 'text/markdown') return { type: 'not-found' };
-    return { type: 'found', path, cwd: dirname(path) };
+    const target = resolveRenderableTarget(parameters.get('blog') ?? '', fs);
+    return target ? { type: 'found', path: target.path, cwd: dirname(target.path) } : { type: 'not-found' };
   } catch {
     return { type: 'not-found' };
   }

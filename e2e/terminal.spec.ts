@@ -105,6 +105,40 @@ test('opens a shared post with its requested theme and starts in its directory',
   await expect(terminal).toContainText('* gruvbox-light');
 });
 
+test('opens shared project Markdown in the terminal by default', async ({ page }) => {
+  await page.goto('/?blog=%2Fproject%2Fneko-terminal.md');
+  await waitForTerminalReady(page, '/project');
+
+  const terminal = page.locator('.xterm-accessibility-tree');
+  await expect(terminal).toContainText('This project turns a personal homepage');
+  await expect(page.locator('.document-window')).not.toBeVisible();
+  await runCommand(page, 'pwd');
+  await expect(terminal).toContainText('neko:/project$');
+});
+
+test('opens shared Markdown in a document window when window=true', async ({ page }) => {
+  await page.goto('/?blog=%2Fproject%2Fneko-terminal.md&window=true');
+  await waitForTerminalReady(page, '/project');
+
+  const content = page.locator('.document-content');
+  await expect(content).toBeVisible();
+  await expect(content).toBeFocused();
+  await expect(content.locator('h1', { hasText: 'Neko Terminal Homepage' })).toBeVisible();
+  await expect(page.locator('.xterm-helper-textarea')).not.toBeFocused();
+});
+
+test('opens a shared slide in its document window', async ({ page }) => {
+  await page.goto('/?blog=%2Fslide%2Fexample%2Findex.html');
+  await waitForTerminalReady(page, '/slide/example');
+
+  const overlay = page.locator('.document-window');
+  const frameElement = page.locator('.document-frame');
+  const frame = page.frameLocator('.document-frame');
+  await expect(overlay).toBeVisible();
+  await expect(frameElement).toBeFocused();
+  await expect(frame.locator('html')).toHaveAttribute('data-slide', '1');
+});
+
 test('shows a terminal 404 and stays at root for a missing shared post', async ({ page }) => {
   await page.goto('/?blog=%2Fpost%2Fmissing.md');
   await waitForTerminalReady(page);
@@ -139,6 +173,12 @@ test('generates share links with the active or requested theme', async ({ page }
   await runCommand(page, 'share /post/hello-terminal.md --theme missing');
   await expect(terminal).toContainText("share: warning: unsupported theme 'missing'");
   await expect(terminal).toContainText('blog=%2Fpost%2Fhello-terminal.md&theme=gruvbox-light');
+
+  await runCommand(page, 'share /project/neko-terminal.md --window');
+  await expect(terminal).toContainText('blog=%2Fproject%2Fneko-terminal.md&theme=gruvbox-light&window=true');
+
+  await runCommand(page, 'share /slide/example/index.html');
+  await expect(terminal).toContainText('blog=%2Fslide%2Fexample%2Findex.html&theme=gruvbox-light');
 });
 
 test('selects path completions with Tab and arrow keys before executing', async ({ page }) => {

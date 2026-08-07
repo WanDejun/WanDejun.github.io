@@ -46,6 +46,8 @@ beforeEach(() => {
     { path: '/post/post.md', content: postSource, size: new TextEncoder().encode(postSource).byteLength, mime: 'text/markdown', url: '/post.md' },
     { path: '/post/photo.png', size: 12, mime: 'image/png', url: '/photo.png' },
     { path: '/post/my notes/draft post.md', content: '# Draft\n', size: 8, mime: 'text/markdown' },
+    { path: '/project/notes.md', content: '# Notes\n', size: 8, mime: 'text/markdown' },
+    { path: '/static/readme.md', content: '# Static\n', size: 9, mime: 'text/markdown' },
     { path: '/project/page.html', content: '<h1>Project</h1>', size: 16, mime: 'text/html' },
     { path: '/slide/example/index.html', content: '<h1>Slides</h1>', size: 15, mime: 'text/html' },
   ], registry.names());
@@ -146,7 +148,7 @@ describe('Shell', () => {
     ]);
   });
 
-  it('generates share links with the current or requested theme', async () => {
+  it('generates share links for every renderable target', async () => {
     expect((await shell.execute('share /post/post.md', controller())).chunks).toEqual([{
       type: 'text',
       value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=tokyonight-night\n',
@@ -154,6 +156,39 @@ describe('Shell', () => {
     expect((await shell.execute('share /post/post.md --theme gruvbox-light', controller())).chunks).toEqual([{
       type: 'text',
       value: 'https://example.com/home/?blog=%2Fpost%2Fpost.md&theme=gruvbox-light\n',
+    }]);
+    expect((await shell.execute('share /project/notes.md', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fproject%2Fnotes.md&theme=tokyonight-night\n',
+    }]);
+    expect((await shell.execute('share /static/readme.md', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fstatic%2Freadme.md&theme=tokyonight-night\n',
+    }]);
+    expect((await shell.execute('share /slide/example/index.html', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fslide%2Fexample%2Findex.html&theme=tokyonight-night\n',
+    }]);
+  });
+
+  it('adds window=true only when explicitly requested', async () => {
+    for (const command of [
+      'share /project/notes.md --window',
+      'share /project/notes.md -w',
+      'share /project/notes.md --window=true',
+    ]) {
+      expect((await shell.execute(command, controller())).chunks).toEqual([{
+        type: 'text',
+        value: 'https://example.com/home/?blog=%2Fproject%2Fnotes.md&theme=tokyonight-night&window=true\n',
+      }]);
+    }
+    expect((await shell.execute('share /project/notes.md --window=false', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fproject%2Fnotes.md&theme=tokyonight-night\n',
+    }]);
+    expect((await shell.execute('share /slide/example/index.html --window', controller())).chunks).toEqual([{
+      type: 'text',
+      value: 'https://example.com/home/?blog=%2Fslide%2Fexample%2Findex.html&theme=tokyonight-night&window=true\n',
     }]);
   });
 
@@ -172,10 +207,12 @@ describe('Shell', () => {
     }]);
   });
 
-  it('rejects non-post share targets and malformed options', async () => {
+  it('rejects non-renderable share targets and malformed options', async () => {
     expect((await shell.execute('share /project/page.html', controller())).exitCode).toBe(2);
     expect((await shell.execute('share /post/post.md --theme', controller())).exitCode).toBe(2);
     expect((await shell.execute('share /post/post.md --unknown', controller())).exitCode).toBe(2);
+    expect((await shell.execute('share /post/post.md --window=maybe', controller())).exitCode).toBe(2);
+    expect((await shell.execute('share /post/post.md --window --window', controller())).exitCode).toBe(2);
   });
 
   it('colors directories, executables, and regular files without polluting pipes', async () => {
@@ -255,7 +292,7 @@ describe('Shell', () => {
     ].join('\n'));
   });
 
-  it('opens only slide index HTML files as standalone documents', async () => {
+  it('opens Markdown and slide targets as standalone documents when requested', async () => {
     expect((await shell.execute('render --window /post/post.md', controller())).chunks).toEqual([
       { type: 'markdown-document', path: '/post/post.md', title: 'post.md' },
     ]);
@@ -265,6 +302,10 @@ describe('Shell', () => {
     expect((await shell.execute('render /slide/example/index.html', controller())).chunks).toEqual([
       { type: 'document', path: '/slide/example/index.html', title: 'example' },
     ]);
+    expect((await shell.execute('render /project/notes.md', controller())).chunks).toContainEqual({
+      type: 'ansi',
+      value: expect.any(String),
+    });
     expect((await shell.execute('render /project/page.html', controller())).exitCode).toBe(2);
     expect((await shell.execute('render /slide/missing/index.html', controller())).exitCode).toBe(1);
   });

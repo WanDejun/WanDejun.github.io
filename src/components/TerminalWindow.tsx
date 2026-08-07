@@ -421,7 +421,8 @@ export function TerminalWindow() {
       const path = request.blog.type === 'found' ? request.blog.path : '/static/welcome.md';
       if (request.blog.type === 'found') shell.cwd = request.blog.cwd;
       // Equivalent to a bashrc command: startup and `exit` both use the public render path.
-      const startupResult = await shell.execute(`render ${quoteShellWord(path)}`, controller.signal, terminal.cols);
+      const renderArguments = request.window ? `--window ${quoteShellWord(path)}` : quoteShellWord(path);
+      const startupResult = await shell.execute(`render ${renderArguments}`, controller.signal, terminal.cols);
       await renderChunks(startupResult.chunks, controller);
     }
 

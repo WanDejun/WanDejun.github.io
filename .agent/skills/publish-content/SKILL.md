@@ -34,7 +34,11 @@ Keep slide CSS, JavaScript, fonts, images, and other dependencies inside the sli
 
 ## Preserve Public Links
 
-Avoid renaming published post paths without calling out broken share links. The `blog` GET parameter and `share` command accept existing Markdown files under `/post`. Use relative paths for local assets so GitHub Pages subpath deployment continues to work.
+Avoid renaming published paths without calling out broken share links. The
+`blog` GET parameter and `share` command accept any existing Markdown file and
+standalone slide `/slide/**/index.html`. Use relative paths for local assets so
+GitHub Pages subpath deployment continues to work. Add `window=true` only when
+Markdown should open in a document window; slides always use their document window.
 
 ## Verify
 

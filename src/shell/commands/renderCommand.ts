@@ -1,4 +1,5 @@
 import { TerminalMarkdownRenderer } from '../../markdown/TerminalMarkdownRenderer';
+import { RENDER_INPUT_ERROR, resolveRenderableTarget } from '../../renderTarget';
 import type { Command } from '../types';
 import { error } from './utils';
 
@@ -21,32 +22,20 @@ export const renderCommand: Command = {
     const path = paths[0];
 
     try {
-      const sourcePath = context.fs.normalize(path, context.cwd);
-      if (sourcePath.toLowerCase().endsWith('.md')) {
-        const source = context.fs.readText(sourcePath);
+      const target = resolveRenderableTarget(path, context.fs, context.cwd);
+      if (!target) {
+        return { stdout: '', stderr: error('render', RENDER_INPUT_ERROR), exitCode: 2 };
+      }
+      if (target.type === 'markdown') {
         if (windowed) {
           return {
             stdout: '',
-            chunks: [{ type: 'markdown-document', path: sourcePath, title: sourcePath.split('/').at(-1) ?? 'document' }],
+            chunks: [{ type: 'markdown-document', path: target.path, title: target.path.split('/').at(-1) ?? 'document' }],
           };
         }
-        return { stdout: '', chunks: renderer.render(source, sourcePath, context) };
+        return { stdout: '', chunks: renderer.render(target.source, target.path, context) };
       }
-      if (/^\/slide\/(?:.+\/)?index\.html$/i.test(sourcePath)) {
-        const node = context.fs.require(sourcePath);
-        if (node.type !== 'file' || node.mime !== 'text/html') {
-          return { stdout: '', stderr: error('render', `${path}: not an HTML file`), exitCode: 2 };
-        }
-        return {
-          stdout: '',
-          chunks: [{ type: 'document', path: sourcePath, title: sourcePath.split('/').at(-2) ?? 'slide' }],
-        };
-      }
-      return {
-        stdout: '',
-        stderr: error('render', 'input must be a .md file or /slide/.../index.html'),
-        exitCode: 2,
-      };
+      return { stdout: '', chunks: [{ type: 'document', path: target.path, title: target.title }] };
     } catch (exception) {
       return { stdout: '', stderr: error('render', (exception as Error).message), exitCode: 1 };
     }
